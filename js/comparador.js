@@ -230,6 +230,7 @@ function renderTable() {
   }
 
   wrap.innerHTML = `
+    <p class="compare-scroll-hint">↔️ Desliza la tabla hacia los lados para ver todos los datos</p>
     <div class="compare-table-wrap">
       <table class="compare-table">
         <thead>

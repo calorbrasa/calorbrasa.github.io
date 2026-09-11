@@ -1367,6 +1367,37 @@ section.container > h2 {
   min-width: 220px;
 }
 
+.compare-scroll-hint {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .compare-scroll-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    margin: 16px 0 -8px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 12px;
+    font-size: 0.92rem;
+  }
+
+  .compare-table .sticky-col {
+    min-width: 120px;
+    font-size: 0.85rem;
+  }
+
+  .compare-table th:not(.sticky-col),
+  .compare-table td:not(.sticky-col) {
+    min-width: 170px;
+  }
+}
+
 .compare-empty-value {
   color: var(--color-text-muted);
 }
