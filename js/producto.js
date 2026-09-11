@@ -66,11 +66,54 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (descriptionMeta && product.description) {
     descriptionMeta.setAttribute("content", product.description);
   }
+  injectProductSchema(product);
 
   container.innerHTML = renderDetail(product);
   initRadarChart(product);
   attachCardClickGuards();
 });
+
+// Marcado schema.org/Product para que Google pueda mostrar precio y
+// estrellas directamente en los resultados de búsqueda (rich results).
+function injectProductSchema(product) {
+  const price = product.discountedPrice != null ? product.discountedPrice : product.retailPrice;
+
+  const schema = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.destacado_editorial || undefined,
+    image: product.image_url ? [product.image_url] : undefined,
+    sku: product.id,
+    brand: product.marca ? { "@type": "Brand", name: product.marca } : undefined,
+  };
+
+  if (!isPendingLink(product.affiliate_link) && typeof price === "number") {
+    schema.offers = {
+      "@type": "Offer",
+      url: product.affiliate_link,
+      priceCurrency: "EUR",
+      price,
+      availability: "https://schema.org/InStock",
+      itemCondition: "https://schema.org/NewCondition",
+    };
+  }
+
+  if (typeof product.valoracion_media === "number" && product.resenas_cantidad > 0) {
+    schema.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: product.valoracion_media,
+      reviewCount: product.resenas_cantidad,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  const script = document.createElement("script");
+  script.type = "application/ld+json";
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+}
 
 function isPendingLink(link) {
   return !link || link.trim().toUpperCase() === "PENDIENTE";
