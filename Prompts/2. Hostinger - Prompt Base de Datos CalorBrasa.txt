@@ -1,0 +1,61 @@
+Quiero redefinir la colección "products" de la base de datos
+para incluir especificaciones técnicas completas de estufas,
+calentadores y sistemas de calefacción para el hogar. Aplica
+estos cambios tanto en el entorno "Datos de prueba" como en
+"Datos en tiempo real" — ambos deben quedar con exactamente
+el mismo schema.
+
+CONSERVAR sin tocar:
+name, description, affiliate_link, isFeatured, retailPrice,
+discountedPrice, category, showInTopMenu
+
+ELIMINAR:
+- image (campo de archivo — ya no se usa)
+- range
+
+AÑADIR:
+- image_url (texto) — URL de la imagen del producto.
+  Un solo enlace. Si el campo está vacío, no mostrar
+  imagen. Nunca mostrar imagen rota.
+
+AÑADIR — Identificación:
+- marca (texto)
+- rango_precio (selector: bajo / medio / alto)
+  (bajo = menos de 200€, medio = 200-700€, alto = más de 700€)
+
+AÑADIR — Especificaciones técnicas:
+- tipo_combustible (selector: pellet / leña / eléctrico / gas butano-propano / gas natural)
+- superficie_calefactable_m2 (número)
+- potencia_kw (número)
+- coste_diario_estimado_eur (número) — coste aproximado de un uso de 8h/día
+- tiempo_calentamiento_min (número)
+- capacidad_deposito_kg (número) — capacidad del depósito de pellet o leña;
+  dejar vacío si no aplica (eléctrico / gas)
+- nivel_ruido_db (número)
+- peso_kg (número)
+- niveles_potencia (número)
+- tipo_instalacion (selector: portátil (enchufar y usar) / requiere salida de humos / instalación profesional)
+- eficiencia_energetica (selector: A+++ / A++ / A+ / A / B)
+- garantia_años (número)
+
+AÑADIR — Puntuaciones 0-10 para gráfico radar:
+- score_facilidad_uso (número)
+- score_eficiencia (número)
+- score_confort (número)
+- score_calidad_precio (número)
+- score_autonomia (número)
+- score_potencia (número)
+
+AÑADIR — Contenido editorial:
+- ideal_para (texto)
+- pros (texto, valores separados por |)
+- contras (texto, valores separados por |)
+- destacado_editorial (texto)
+
+AÑADIR — Opiniones de clientes:
+- valoracion_media (número decimal, ej: 4.3)
+- resenas_cantidad (número)
+- resenas_resumen (texto largo)
+
+Todos los campos nuevos son opcionales. No toques
+las colecciones users ni subscribers.

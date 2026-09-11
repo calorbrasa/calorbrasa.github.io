@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Producto | CalorBrasa</title>
+  <meta name="description" id="page-description" content="Ficha completa con especificaciones, puntuaciones y opiniones de clientes.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">🔥 Calor<span>Brasa</span></a>
+
+      <nav class="main-nav" id="main-nav">
+        <ul>
+          <li><a href="productos.html?categoria=pellets">Estufas de pellets</a></li>
+          <li><a href="productos.html?categoria=lena-biomasa">Estufas de leña / biomasa</a></li>
+          <li><a href="productos.html?categoria=electricos">Calefactores eléctricos</a></li>
+          <li><a href="productos.html?categoria=gas">Calefactores de gas</a></li>
+          <li><a href="productos.html?categoria=radiadores">Radiadores</a></li>
+          <li><a href="comparador.html">Comparador</a></li>
+          <li><a href="asistente.html" class="nav-quiz-link">🧭 ¿Cuál elijo?</a></li>
+        </ul>
+      </nav>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container product-detail" id="product-detail">
+    <a href="productos.html" class="back-link">← Volver a productos</a>
+    <!-- El contenido se rellena por completo desde js/producto.js -->
+    <div id="detail-content"></div>
+  </main>
+
+  <p class="affiliate-notice">Como Afiliado de Amazon, CalorBrasa obtiene ingresos por las compras adscritas que cumplen los requisitos aplicables.</p>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <h4>CalorBrasa</h4>
+          <p style="color:#d8d3cf; font-size:0.88rem;">Guías y comparativas para elegir la calefacción perfecta para tu hogar.</p>
+        </div>
+        <div>
+          <h4>Categorías</h4>
+          <ul>
+            <li><a href="productos.html?categoria=pellets">Estufas de pellets</a></li>
+            <li><a href="productos.html?categoria=lena-biomasa">Estufas de leña / biomasa</a></li>
+            <li><a href="productos.html?categoria=electricos">Calefactores eléctricos</a></li>
+            <li><a href="productos.html?categoria=gas">Calefactores de gas</a></li>
+            <li><a href="productos.html?categoria=radiadores">Radiadores</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="aviso-afiliados.html">Aviso de afiliados de Amazon</a></li>
+            <li><a href="privacidad.html">Política de privacidad</a></li>
+            <li><a href="aviso-legal.html">Aviso legal</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        © <span id="year"></span> CalorBrasa. Todos los derechos reservados.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Popup de suscripción (exit intent) -->
+  <div class="exit-popup" id="exit-popup" hidden>
+    <div class="exit-popup-content">
+      <button class="exit-popup-close" id="exit-popup-close" aria-label="Cerrar">×</button>
+      <h3>¿Quieres elegir mejor tu calefacción?</h3>
+      <p>Suscríbete y recibe nuestra guía gratuita + comparativas exclusivas antes que nadie.</p>
+      <form id="exit-popup-form">
+        <input type="email" name="email" placeholder="Tu correo electrónico" required>
+        <button type="submit" class="btn btn-primary">Quiero la guía gratis</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/producto.js"></script>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

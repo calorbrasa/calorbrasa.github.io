@@ -1,0 +1,120 @@
+Quiero varios cambios en las tarjetas de producto y en la
+página de detalle. Lee todos los datos siempre desde
+"Datos en tiempo real", nunca desde "Datos de prueba".
+Elimina el selector de idioma de toda la web si existe
+y establece el castellano como único idioma por defecto.
+No añadas selector de divisas.
+
+━━━ CAMBIOS EN LAS TARJETAS DE LA LANDING ━━━
+
+1. Imagen en formato cuadrado (1:1) con object-fit: cover
+   para que se recorte centrada sin deformarse.
+
+2. Texto de la tarjeta: nunca truncar con line-clamp ni
+   con overflow hidden. Los textos deben mostrarse completos
+   y la tarjeta debe adaptarse a la altura del contenido.
+
+3. Botón naranja "🛒 Comprar en Amazon": fondo naranja (#FF9900),
+   texto blanco, abre affiliate_link en nueva pestaña.
+   En hover: fondo negro (#000000). Nunca verde en hover.
+
+4. Botón gris "Ver detalles": fondo gris oscuro (#333333),
+   texto blanco, lleva a la página de detalle.
+   En hover: fondo ligeramente más oscuro, nunca cambiar el color base.
+
+5. La tarjeta completa sigue siendo clickable y lleva
+   a la página de detalle.
+
+━━━ PÁGINA DE DETALLE INDIVIDUAL ━━━
+
+La página debe ser completamente mobile responsive.
+En móvil: columnas apiladas, botones de mínimo 48px de alto,
+textos con word-wrap: break-word, nunca overflow oculto.
+Usa anchos en porcentaje y max-width, nunca anchos fijos
+que puedan desbordar en pantallas más estrechas.
+
+LAYOUT EN DESKTOP (dos columnas en la parte superior):
+- Columna izquierda (40%): imagen del producto
+- Columna derecha (60%): hero + specs + radar
+
+ESTRUCTURA DE LA PÁGINA (de arriba a abajo):
+
+1. HERO (columna derecha, parte superior):
+   Nombre + marca + destacado_editorial en rojo brasa.
+   El campo destacado_editorial debe mostrarse completo
+   en todas las resoluciones, con word-wrap activo.
+   Precio con descuento destacado, precio original tachado.
+   Botón "🛒 Comprar en Amazon": naranja (#FF9900),
+   hover negro (#000000), tamaño grande, abre affiliate_link.
+
+2. IMAGEN (columna izquierda):
+   Mostrar la URL del campo image_url directamente
+   como src de la etiqueta img. Una sola imagen,
+   sin carrusel, sin galería, sin thumbnails.
+   object-fit: contain. Sin bordes. Sin fondo de color.
+   La imagen se integra con el fondo blanco de la página.
+   Si image_url está vacío, no mostrar nada.
+   Nunca mostrar imagen rota.
+
+3. ESPECIFICACIONES TÉCNICAS (columna derecha):
+   Grid de tarjetas (2 columnas en desktop, 1 en móvil)
+   con icono + nombre + valor para cada spec.
+   Fondos blancos. Sin colores de fondo naranja ni rojo.
+   Mostrar solo los campos con valor (capacidad_deposito_kg
+   nunca se muestra si vale 0).
+   Campos: tipo_combustible, superficie_calefactable_m2,
+   potencia_kw, coste_diario_estimado_eur, tiempo_calentamiento_min,
+   capacidad_deposito_kg, nivel_ruido_db, peso_kg,
+   niveles_potencia, tipo_instalacion, eficiencia_energetica,
+   garantia_años.
+
+4. GRÁFICO RADAR "Puntuaciones" (columna derecha):
+   Título de la sección: "Puntuaciones" (no "Rendimiento").
+   Layout de 2 columnas:
+   - Izquierda: gráfico radar (telaraña) con Chart.js
+     (CDN: https://cdn.jsdelivr.net/npm/chart.js).
+     6 ejes: Facilidad de uso, Eficiencia energética, Confort,
+     Calidad-precio, Autonomía, Potencia.
+     Valores de score_facilidad_uso, score_eficiencia,
+     score_confort, score_calidad_precio, score_autonomia,
+     score_potencia (escala 0-10).
+     IMPORTANTE: el gráfico debe ir sobre fondo blanco
+     o claro. Sin contenedor oscuro, sin recuadro negro.
+     El color de la línea del radar: rojo brasa (#C1440E).
+   - Derecha: puntuaciones con icono + valor 0-10
+     SIEMPRE VISIBLES, no solo al hacer hover.
+     Fondo blanco. Sin fondos de color.
+
+5. BOTÓN CTA INTERMEDIO:
+   "🛒 Comprar en Amazon" naranja (#FF9900),
+   hover negro (#000000). Repetir aquí para
+   no obligar al usuario a hacer scroll arriba.
+
+6. IDEAL PARA: campo ideal_para con icono de persona.
+   Solo si tiene contenido.
+
+7. PROS Y CONTRAS: dos columnas.
+   Pros (separados por |) con check verde.
+   Contras (separados por |) con X roja.
+   Fondos blancos en los cards. Sin fondos naranja.
+   Solo mostrar si alguno tiene contenido.
+
+8. OPINIONES DE CLIENTES:
+   Si valoracion_media tiene valor: estrellas visuales
+   (★★★★☆ 4.3/5) y número de reseñas.
+   resenas_resumen en bloque destacado con comillas.
+   Fondo del bloque: blanco o gris muy claro.
+   Sin fondo naranja ni de color vivo.
+   Solo mostrar si resenas_resumen tiene contenido.
+
+9. DESCRIPCIÓN COMPLETA: campo description.
+
+10. BOTÓN CTA FINAL: "🛒 Comprar en Amazon" naranja
+    al pie, antes del footer. Hover negro.
+
+COMPORTAMIENTO GENERAL:
+- Todos los datos desde "Datos en tiempo real".
+- Campos vacíos o null: no mostrar esa sección.
+- Botón "← Volver" que lleva a la página principal.
+- Identidad visual CalorBrasa: rojo brasa (#C1440E) + negro carbón (#151312).
+- 100% mobile responsive.

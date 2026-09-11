@@ -1,0 +1,55 @@
+Quiero que transformes esta web en una tienda especializada en
+estufas, calentadores y sistemas de calefacción para el hogar
+(pellets, leña, eléctricos y de gas) llamada "CalorBrasa".
+Necesito que hagas los siguientes cambios:
+
+1. Nombre y branding: cambia el nombre del sitio a "CalorBrasa".
+   Diseña una identidad visual cálida y de confianza con paleta
+   principal en rojo brasa (#C1440E) y negro carbón (#151312),
+   con un tono ámbar (#F2A93B) como color secundario de apoyo
+   para detalles y fondos suaves. Tipografía sans-serif limpia.
+   Aplica los cambios en header, footer, botones, sección hero
+   y favicon. El botón naranja de compra en Amazon (#FF9900) se
+   mantiene igual en todas las páginas — es un color funcional,
+   no lo confundas ni lo sustituyas por el color de marca.
+
+2. Estructura: a diferencia de una tienda de un solo producto,
+   esta web vende varios TIPOS de calefacción, así que necesita
+   un menú de categorías. Crea estas cinco categorías y muéstralas
+   en el menú principal y como filtro en la página de productos:
+   - Estufas de pellets
+   - Estufas de leña / biomasa
+   - Calefactores eléctricos
+   - Calefactores de gas
+   - Radiadores
+   Usa el campo "category" para clasificar cada producto en una
+   de estas cinco opciones exactas. No inventes categorías nuevas
+   ni mezcles varias en un mismo producto.
+
+3. Textos: actualiza el headline principal, el subtítulo y
+   cualquier texto de la web para que hablen de ayudar a elegir
+   la calefacción adecuada para cada hogar (potencia necesaria,
+   superficie a calefactar, tipo de combustible, coste de uso).
+   Tono: cercano, experto y práctico — ayudamos a elegir bien
+   antes de comprar, no solo vendemos.
+   Ejemplo de headline: "Encuentra la estufa o calefactor
+   perfecto para tu casa".
+   Ejemplo de subtítulo: "Comparativas, guías y datos reales
+   para elegir sin errores esta temporada".
+
+4. Mantén intactos: la estructura de tarjetas de producto,
+   el sistema de datos, el exit popup de suscriptores y
+   el botón de compra en Amazon.
+
+5. Hero banner: añade un overlay negro carbón semitransparente
+   sobre la imagen de fondo del hero (opacidad 15-20%)
+   para que el texto blanco se lea con claridad.
+
+6. Footer: usa fondo oscuro (#151312 o similar) con texto
+   claro. Nunca texto claro sobre fondo claro.
+
+7. Responsive: usa contenedores con padding horizontal y
+   max-width proporcional. Nunca anchos fijos que puedan
+   desbordar en pantallas ligeramente estrechas.
+
+8. No añadas selector de divisas ni selector de idioma.

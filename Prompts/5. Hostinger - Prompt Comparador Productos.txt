@@ -1,0 +1,157 @@
+Quiero añadir un comparador de estufas y calefactores a la web.
+Necesito dos cosas: una página de comparador y un botón
+"Comparar" en cada ficha de producto.
+
+IMPORTANTE SOBRE ESTILOS:
+El comparador debe seguir la misma estética visual que
+el resto de la web: fondos blancos o muy claros, textos
+oscuros, acento rojo brasa (#C1440E).
+NO usar modo oscuro ni fondos negros en el comparador.
+Todos los cards de características, bloques de análisis
+y secciones de opiniones deben tener fondo blanco.
+El botón "Ver detalles" debe mantenerse siempre en
+gris oscuro (#333333).
+Los botones "Comprar en Amazon" en naranja (#FF9900)
+con hover en negro (#000000).
+
+━━━ 1. PÁGINA COMPARADOR ━━━
+
+Crea una nueva página llamada "Comparador" accesible
+desde el menú de navegación principal.
+
+BUSCADOR DE MODELOS (parte superior de la página):
+
+- Por defecto se muestran 2 campos de búsqueda en fila.
+- Cada campo es un input con autocompletado. Al hacer clic
+  o poner el foco en el campo (sin haber escrito nada),
+  se despliega inmediatamente un dropdown con TODOS los
+  productos disponibles en "Datos en tiempo real".
+  A medida que el usuario escribe, la lista se filtra
+  por nombre en tiempo real.
+- Un producto ya seleccionado en un campo NO debe aparecer
+  como sugerencia en los otros campos.
+- Cuando los 2 campos están rellenos, aparece automáticamente
+  un botón "＋ Añadir modelo" a la derecha. Al pulsarlo
+  aparece un 3er campo de búsqueda.
+- Cuando el 3er campo está relleno, aparece otro botón
+  "＋ Añadir modelo". Al pulsarlo aparece un 4º campo.
+- Máximo 4 modelos en comparación simultánea.
+- Cada campo tiene una X para eliminar ese modelo
+  de la comparación. Al eliminarlo, el campo desaparece
+  y los modelos se reordenan.
+- El estado del comparador se guarda en los parámetros
+  de la URL (ej: /comparador?m1=ID1&m2=ID2&m3=ID3)
+  para que la comparación sea compartible con un enlace.
+
+TABLA DE COMPARACIÓN:
+
+Aparece debajo del buscador en cuanto hay al menos
+2 modelos seleccionados. Se actualiza en tiempo real
+al añadir o quitar modelos.
+
+La tabla tiene:
+- Primera columna fija: nombre del campo con icono.
+- Una columna por cada modelo seleccionado.
+
+LAYOUT DE LA TABLA:
+- Cada celda debe ocupar exactamente el mismo alto
+  en su fila. No dejar celdas vacías ni cuadrados
+  blancos debajo del contenido de una columna.
+- Las filas deben extenderse al ancho total de la tabla.
+- En móvil: scroll horizontal. Primera columna sticky.
+- Si un campo está vacío para un modelo, mostrar "—"
+  en gris en esa celda (la celda sigue ocupando su espacio).
+  Excepción: capacidad_deposito_kg con valor 0 se trata
+  como vacío y también muestra "—" (significa que ese
+  modelo no tiene depósito, por ejemplo eléctrico o gas).
+
+Filas de la tabla (en este orden):
+
+CABECERA DE CADA MODELO:
+- Imagen del producto (cuadrada, 120x120px, object-fit:cover).
+  Leer image_url y mostrarla directamente. Si está vacío,
+  mostrar placeholder neutro.
+- Nombre completo del producto en negrita.
+- Marca en gris pequeño.
+- Badge "DESTACADO" en rojo brasa si isFeatured es true.
+- Botón "🛒 Comprar en Amazon" con fondo naranja (#FF9900)
+  y texto blanco, abre affiliate_link en nueva pestaña.
+  Hover: negro (#000000).
+
+BLOQUE — Precio:
+- Precio actual (grande, en rojo brasa)
+- Precio original tachado (si discountedPrice < retailPrice)
+- Porcentaje de descuento en badge rojo (si hay descuento)
+- Fila "Rango de precio": badge visual con el valor
+  de rango_precio (bajo / medio / alto)
+
+BLOQUE — Valoración de compradores:
+- Estrellas visuales (★) según valoracion_media
+- Número de reseñas entre paréntesis
+- Solo mostrar si valoracion_media tiene valor
+
+BLOQUE — Especificaciones técnicas:
+Cada fila tiene icono + nombre del campo + valor.
+En filas donde "más es mejor" (superficie_calefactable_m2,
+potencia_kw, niveles_potencia, garantia_años): destacar en
+rojo brasa y negrita el valor más alto entre los modelos
+comparados.
+En filas donde "menos es mejor" (coste_diario_estimado_eur,
+tiempo_calentamiento_min, nivel_ruido_db, peso_kg): destacar
+en rojo brasa y negrita el valor más bajo.
+Categoría y tipo de combustible no se destacan (no son
+comparables como "mejor/peor").
+
+Campos a mostrar:
+- 🔥 Combustible: tipo_combustible
+- 📐 Superficie calefactable: superficie_calefactable_m2 + " m²"
+- ⚡ Potencia: potencia_kw + " kW"
+- 💶 Coste estimado: coste_diario_estimado_eur + " €/día"
+- ⏱️ Tiempo de calentamiento: tiempo_calentamiento_min + " min"
+- 🛢️ Capacidad del depósito: capacidad_deposito_kg + " kg"
+  (solo si es mayor que 0)
+- 🔊 Nivel de ruido: nivel_ruido_db + " dB"
+- ⚖️ Peso: peso_kg + " kg"
+- 🎚️ Niveles de potencia: niveles_potencia
+- 🔧 Tipo de instalación: tipo_instalacion
+- 🌡️ Eficiencia energética: eficiencia_energetica
+- 🛡️ Garantía: garantia_años + " años"
+
+BLOQUE — Puntuaciones (gráfico + tabla):
+- Gráfico radar (Chart.js, CDN:
+  https://cdn.jsdelivr.net/npm/chart.js) con TODOS
+  los modelos superpuestos en colores distintos.
+  6 ejes: Facilidad de uso, Eficiencia energética, Confort,
+  Calidad-precio, Autonomía, Potencia.
+  Fondo del radar: blanco o claro (NO oscuro).
+  Usa un color distinto por modelo, en este orden:
+  rojo brasa (#C1440E), ámbar (#F2A93B), gris carbón
+  (#5C5652) y azul acero (#3B6E8F) para el 4º modelo si lo hay.
+- Debajo del radar: una fila por cada score con
+  barra de progreso (0-10). El score más alto
+  de cada fila en negrita y en rojo brasa.
+
+BLOQUE — Perfil del comprador:
+- 👤 Ideal para: campo ideal_para de cada modelo.
+  Fondo blanco.
+
+BLOQUE — Pros y contras:
+- ✅ Pros: lista de pros (separados por |) con check verde.
+- ❌ Contras: lista de contras (separados por |) con X roja.
+  Fondo blanco.
+
+BLOQUE — CTA final por modelo:
+- Botón "🛒 Comprar en Amazon" naranja (#FF9900)
+  para cada modelo. Hover negro.
+
+━━━ 2. BOTÓN "COMPARAR" EN CADA FICHA DE PRODUCTO ━━━
+
+En la página de detalle de cada producto, añadir un botón
+secundario junto al CTA de compra que diga:
+"⚖️ Comparar este producto"
+
+Al pulsarlo, lleva a /comparador?m1=[ID del producto actual].
+
+El botón debe tener fondo transparente con borde en
+rojo brasa (#C1440E) y texto en rojo brasa.
+Tamaño igual al botón "Ver detalles" de las tarjetas.
