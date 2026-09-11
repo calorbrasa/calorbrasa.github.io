@@ -53,11 +53,32 @@ function initExitPopup() {
   }
 
   // Detecta intención de salida: el ratón sale por la parte superior de la ventana
+  // (solo aplica en escritorio, un dispositivo táctil no tiene este evento)
   document.addEventListener("mouseout", (event) => {
     if (!event.relatedTarget && event.clientY <= 0) {
       showPopup();
     }
   });
+
+  // Alternativa para móvil/táctil: sin ratón no hay "exit intent", así que
+  // usamos el scroll como señal de interés real antes de mostrar el popup.
+  const SCROLL_TRIGGER_RATIO = 0.6;
+
+  function checkScrollTrigger() {
+    if (hasShown) {
+      window.removeEventListener("scroll", checkScrollTrigger);
+      return;
+    }
+    const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+    if (scrollableHeight <= 0) return;
+    const scrolledRatio = window.scrollY / scrollableHeight;
+    if (scrolledRatio >= SCROLL_TRIGGER_RATIO) {
+      showPopup();
+      window.removeEventListener("scroll", checkScrollTrigger);
+    }
+  }
+
+  window.addEventListener("scroll", checkScrollTrigger, { passive: true });
 
   closeBtn.addEventListener("click", hidePopup);
   popup.addEventListener("click", (event) => {
