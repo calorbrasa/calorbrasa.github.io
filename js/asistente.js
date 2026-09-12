@@ -463,6 +463,15 @@ function renderResult(wrap) {
     }
   }
 
+  if (typeof gtag === "function") {
+    gtag("event", "cuestionario_completado", {
+      categoria_recomendada: indicatedCategory,
+      categoria_alternativa: hasConflict ? computedCategory : "",
+      tiene_conflicto: hasConflict,
+      producto_recomendado_id: primaryProduct ? primaryProduct.id : "",
+    });
+  }
+
   wrap.innerHTML = `
     ${headerHtml}
     ${blocksHtml}
@@ -498,7 +507,7 @@ function renderQuizProductCard(product) {
   const detailHref = `producto.html?id=${encodeURIComponent(product.id)}`;
   const amazonButton = isQuizPendingLink(product.affiliate_link)
     ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`
-    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener">🛒 Comprar en Amazon</a>`;
+    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
 
   return `
     <article class="product-card" data-href="${detailHref}" onclick="if(!event.target.closest('a,span.btn')) window.location.href='${detailHref}'">

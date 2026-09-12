@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   initMobileNav();
   initExitPopup();
+  initAmazonClickTracking();
 });
 
 /* Menú móvil ------------------------------------------------ */
@@ -131,6 +132,42 @@ function initExitPopup() {
       );
     }
   });
+}
+
+/* Evento GA4: clic en "Comprar en Amazon" ------------------------ */
+// Los botones de Amazon llevan atributos data-ga-* (ver gaAmazonAttrs)
+// generados desde productos.js / producto.js / comparador.js / asistente.js.
+// Se escucha con delegación en document para no depender de cuándo se
+// pinte cada botón (mucho se genera dinámicamente tras un fetch).
+
+function gaAmazonAttrs(product) {
+  const price = product.discountedPrice != null ? product.discountedPrice : product.retailPrice;
+  const name = String(product.name || "").replace(/"/g, "&quot;");
+  return `data-ga-amazon-click data-ga-id="${product.id}" data-ga-name="${name}" data-ga-category="${product.category || ""}" data-ga-price="${price ?? ""}"`;
+}
+
+function initAmazonClickTracking() {
+  // Fase de captura: varias tarjetas de producto hacen stopPropagation()
+  // en sus enlaces (para no disparar también la navegación de la tarjeta),
+  // lo que impediría que un listener en fase de burbuja llegara a recibirlo.
+  document.addEventListener(
+    "click",
+    (event) => {
+      const link = event.target.closest("a[data-ga-amazon-click]");
+      if (!link || typeof gtag !== "function") return;
+
+      const price = link.dataset.gaPrice ? Number(link.dataset.gaPrice) : undefined;
+      gtag("event", "click_comprar_amazon", {
+        item_id: link.dataset.gaId || "",
+        item_name: link.dataset.gaName || "",
+        item_category: link.dataset.gaCategory || "",
+        price,
+        currency: "EUR",
+        page_location: window.location.href,
+      });
+    },
+    true
+  );
 }
 
 /* Utilidad: formatea precio en euros ---------------------------- */

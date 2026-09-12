@@ -483,7 +483,7 @@ function renderProductCard(product) {
 
   const amazonButton = isPendingLink(product.affiliate_link)
     ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`
-    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener">🛒 Comprar en Amazon</a>`;
+    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
 
   return `
     <article class="product-card" data-href="${detailHref}">

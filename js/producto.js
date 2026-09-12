@@ -123,7 +123,7 @@ function amazonCta(product, extraClass = "") {
   if (isPendingLink(product.affiliate_link)) {
     return `<span class="btn btn-amazon is-disabled ${extraClass}">🛒 Enlace pendiente</span>`;
   }
-  return `<a class="btn btn-amazon ${extraClass}" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener">🛒 Comprar en Amazon</a>`;
+  return `<a class="btn btn-amazon ${extraClass}" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
 }
 
 function renderDetail(product) {
