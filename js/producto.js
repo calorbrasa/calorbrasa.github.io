@@ -61,6 +61,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Cada producto tiene ahora su ficha estática (producto/<id>.html),
+  // generada con tools/build_static.py y pensada para Google. Redirigimos
+  // las URLs antiguas (producto.html?id=...) a la nueva.
+  window.location.replace(`producto/${encodeURIComponent(product.id)}.html`);
+  return;
+
   document.title = `${product.name} | CalorBrasa`;
   const descriptionMeta = document.getElementById("page-description");
   if (descriptionMeta && product.description) {

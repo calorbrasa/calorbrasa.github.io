@@ -479,7 +479,7 @@ function renderProductCard(product) {
     : formatPrice(product.retailPrice);
 
   const rating = typeof product.valoracion_media === "number" ? product.valoracion_media.toFixed(1) : "-";
-  const detailHref = `producto.html?id=${encodeURIComponent(product.id)}`;
+  const detailHref = `producto/${encodeURIComponent(product.id)}.html`;
 
   const amazonButton = isPendingLink(product.affiliate_link)
     ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`

@@ -504,7 +504,7 @@ function renderQuizProductCard(product) {
     ? `<span style="text-decoration:line-through; color:var(--color-text-muted); font-weight:500; font-size:0.85rem; margin-right:6px;">${formatPrice(product.retailPrice)}</span>${formatPrice(product.discountedPrice)}`
     : formatPrice(product.retailPrice);
 
-  const detailHref = `producto.html?id=${encodeURIComponent(product.id)}`;
+  const detailHref = `producto/${encodeURIComponent(product.id)}.html`;
   const amazonButton = isQuizPendingLink(product.affiliate_link)
     ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`
     : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
