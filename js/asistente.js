@@ -336,8 +336,8 @@ function buildUpsellReasons(primary, upsell) {
   if (/wifi|app|smart/i.test(upsell.name) && !/wifi|app|smart/i.test(primary.name)) {
     reasons.push("Incluye control por WiFi desde el móvil");
   }
-  if ((upsell.valoracion_media || 0) > (primary.valoracion_media || 0) + 0.15) {
-    reasons.push(`Mejor valorado (${upsell.valoracion_media.toFixed(1)}★ frente a ${primary.valoracion_media?.toFixed(1) ?? "-"}★)`);
+  if ((cbNota(upsell) || 0) > (cbNota(primary) || 0) + 0.15) {
+    reasons.push(`Mejor Nota CalorBrasa (${cbNotaText(upsell)} frente a ${cbNotaText(primary)})`);
   }
   if (reasons.length === 0) {
     reasons.push("Mejores prestaciones y acabado dentro de la misma categoría");
@@ -494,36 +494,25 @@ function isQuizPendingLink(link) {
 }
 
 function renderQuizProductCard(product) {
-  const imageMarkup = product.image_url
-    ? `<img src="${product.image_url}" alt="${product.name}" loading="lazy"
-         onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🔥',style:'font-size:2.5rem'}))">`
-    : `<span style="font-size:2.5rem;">🔥</span>`;
-
-  const hasDiscount = product.discountedPrice != null && product.discountedPrice < product.retailPrice;
-  const priceMarkup = hasDiscount
-    ? `<span style="text-decoration:line-through; color:var(--color-text-muted); font-weight:500; font-size:0.85rem; margin-right:6px;">${formatPrice(product.retailPrice)}</span>${formatPrice(product.discountedPrice)}`
-    : formatPrice(product.retailPrice);
+  const imageMarkup = cbImg(product);
 
   const detailHref = `producto/${encodeURIComponent(product.id)}.html`;
-  const amazonButton = isQuizPendingLink(product.affiliate_link)
-    ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`
-    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
+  const amazonButton = cbAmazonButton(product);
 
   return `
     <article class="product-card" data-href="${detailHref}" onclick="if(!event.target.closest('a,span.btn')) window.location.href='${detailHref}'">
       <div class="product-image">${imageMarkup}</div>
       <div class="product-body">
         <span class="category-tag">${QUIZ_CATEGORY_LABELS[product.category] || product.category}</span>
-        <h3>${product.marca ? `${product.marca} — ` : ""}${product.name}</h3>
-        <div class="rating">★★★★★ <span>${typeof product.valoracion_media === "number" ? product.valoracion_media.toFixed(1) : "-"} (${product.resenas_cantidad ?? 0})</span></div>
+        <h3>${cbName(product)}</h3>
+        <div class="product-score">${cbNotaHtml(product)}${cbPriceHtml(product)}</div>
         <ul class="specs">
           ${product.potencia_kw != null ? `<li>⚡ Potencia: ${product.potencia_kw} kW</li>` : ""}
           ${product.superficie_calefactable_m2 != null ? `<li>📐 Superficie: hasta ${product.superficie_calefactable_m2} m²</li>` : ""}
         </ul>
-        <div class="price">${priceMarkup}</div>
         <div class="card-actions">
           ${amazonButton}
-          <a class="btn btn-details" href="${detailHref}">Ver detalles</a>
+          <a class="btn btn-details" href="${detailHref}">Ver análisis</a>
         </div>
       </div>
     </article>

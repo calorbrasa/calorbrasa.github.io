@@ -39,21 +39,23 @@ const INSTALACION_CODE_REVERSE = Object.fromEntries(
   Object.entries(INSTALACION_CODE_MAP).map(([full, code]) => [code, full])
 );
 
+// Filtro por Nota CalorBrasa (0-10), calculada en main.js
 const VALORACION_OPTIONS = [
   { key: 0, label: "Cualquiera" },
-  { key: 4, label: "4★ o más" },
-  { key: 4.5, label: "4,5★ o más" },
+  { key: 7, label: "7 o más" },
+  { key: 8, label: "8 o más" },
 ];
 
 const SORT_LABELS = {
   relevancia: "Relevancia",
   "precio-asc": "Precio: menor a mayor",
   "precio-desc": "Precio: mayor a menor",
-  "valoracion-desc": "Mejor valorados",
-  "popularidad-desc": "Más opiniones",
+  "valoracion-desc": "Mejor Nota CalorBrasa",
+  "popularidad-desc": "Más populares",
 };
 
 let allProducts = [];
+let productBadges = {};
 let activeCategory = "todas";
 let sortBy = "relevancia";
 const filters = {
@@ -71,6 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const response = await fetch("data/products.json");
     allProducts = await response.json();
+    productBadges = cbComputeBadges(allProducts);
   } catch (error) {
     console.error("No se pudo cargar el catálogo de productos:", error);
     allProducts = [];
@@ -312,7 +315,7 @@ function renderAdvancedFilters() {
     </div>
 
     <div class="filter-group">
-      <h4>⭐ Valoración mínima</h4>
+      <h4>⭐ Nota CalorBrasa mínima</h4>
       <div class="filter-pill-row" data-group="valoracion">
         ${VALORACION_OPTIONS.map(
           (o) => `<button type="button" class="filter-pill ${filters.valoracionMin === o.key ? "active" : ""}" data-value="${o.key}">${o.label}</button>`
@@ -389,7 +392,7 @@ function applyAdvancedFilters(products) {
   return products.filter((p) => {
     if (filters.precio.size && !filters.precio.has(p.rango_precio)) return false;
     if (filters.instalacion.size && !filters.instalacion.has(p.tipo_instalacion)) return false;
-    if (filters.valoracionMin > 0 && (p.valoracion_media || 0) < filters.valoracionMin) return false;
+    if (filters.valoracionMin > 0 && (cbNota(p) || 0) < filters.valoracionMin) return false;
     if (filters.superficie) {
       const range = SUPERFICIE_RANGES.find((r) => r.key === filters.superficie);
       if (range && !range.test(p.superficie_calefactable_m2)) return false;
@@ -407,16 +410,16 @@ function sortProducts(products) {
   } else if (sortBy === "precio-desc") {
     arr.sort((a, b) => effectivePrice(b) - effectivePrice(a));
   } else if (sortBy === "valoracion-desc") {
-    arr.sort((a, b) => (b.valoracion_media || 0) - (a.valoracion_media || 0) || (b.resenas_cantidad || 0) - (a.resenas_cantidad || 0));
+    arr.sort((a, b) => (cbNota(b) || 0) - (cbNota(a) || 0) || (b.resenas_cantidad || 0) - (a.resenas_cantidad || 0));
   } else if (sortBy === "popularidad-desc") {
     arr.sort((a, b) => (b.resenas_cantidad || 0) - (a.resenas_cantidad || 0));
   } else {
     // Relevancia: destacados primero, luego un peso valoración×volumen de reseñas
     arr.sort((a, b) => {
-      const featuredDiff = (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+      const featuredDiff = (b.isFeatured || productBadges[b.id] ? 1 : 0) - (a.isFeatured || productBadges[a.id] ? 1 : 0);
       if (featuredDiff !== 0) return featuredDiff;
-      const scoreA = (a.valoracion_media || 0) * Math.log((a.resenas_cantidad || 0) + 1);
-      const scoreB = (b.valoracion_media || 0) * Math.log((b.resenas_cantidad || 0) + 1);
+      const scoreA = (cbNota(a) || 0) * Math.log((a.resenas_cantidad || 0) + 3);
+      const scoreB = (cbNota(b) || 0) * Math.log((b.resenas_cantidad || 0) + 3);
       return scoreB - scoreA;
     });
   }
@@ -467,41 +470,27 @@ function isPendingLink(link) {
 }
 
 function renderProductCard(product) {
-  // Nunca mostrar imagen rota: si no hay image_url, mostramos el icono de
-  // reemplazo directamente; si la URL falla al cargar, onerror la sustituye.
-  const imageMarkup = product.image_url
-    ? `<img src="${product.image_url}" alt="${product.name}" loading="lazy"
-         onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🔥',style:'font-size:2.5rem'}))">`
-    : `<span style="font-size:2.5rem;">🔥</span>`;
-
-  const priceMarkup = hasDiscount(product)
-    ? `<span style="text-decoration:line-through; color:var(--color-text-muted); font-weight:500; font-size:0.85rem; margin-right:6px;">${formatPrice(product.retailPrice)}</span>${formatPrice(product.discountedPrice)}`
-    : formatPrice(product.retailPrice);
-
-  const rating = typeof product.valoracion_media === "number" ? product.valoracion_media.toFixed(1) : "-";
   const detailHref = `producto/${encodeURIComponent(product.id)}.html`;
-
-  const amazonButton = isPendingLink(product.affiliate_link)
-    ? `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`
-    : `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
+  const badges = productBadges[product.id] || [];
 
   return `
     <article class="product-card" data-href="${detailHref}">
-      <div class="product-image">${imageMarkup}</div>
+      ${badges.length ? `<div class="product-badges">${cbBadgeHtml(badges)}</div>` : ""}
+      <div class="product-image">${cbImg(product)}</div>
       <div class="product-body">
         <span class="category-tag">${CATEGORY_LABELS[product.category] || product.category}</span>
-        <h3>${product.marca ? `${product.marca} — ` : ""}${product.name}</h3>
-        <div class="rating">★★★★★ <span>${rating} (${product.resenas_cantidad ?? 0})</span></div>
+        <h3>${cbName(product)}</h3>
+        <div class="product-score">${cbNotaHtml(product)}${cbPriceHtml(product)}</div>
         <ul class="specs">
+          ${product.superficie_calefactable_m2 != null ? `<li>📐 Calienta hasta <b>${product.superficie_calefactable_m2} m²</b></li>` : ""}
           ${product.potencia_kw != null ? `<li>⚡ Potencia: ${product.potencia_kw} kW</li>` : ""}
-          ${product.superficie_calefactable_m2 != null ? `<li>📐 Superficie: hasta ${product.superficie_calefactable_m2} m²</li>` : ""}
-          ${product.tipo_combustible ? `<li>⛽ Combustible: ${product.tipo_combustible}</li>` : ""}
-          ${product.coste_diario_estimado_eur != null ? `<li>💶 Coste estimado: ${formatPrice(product.coste_diario_estimado_eur)}/día (8h)</li>` : ""}
+          ${product.coste_diario_estimado_eur != null ? `<li>💶 Gasto: <b>${formatPrice(product.coste_diario_estimado_eur)}/día</b> (8 h)</li>` : ""}
+          ${product.tipo_instalacion ? `<li>🔧 ${product.tipo_instalacion.charAt(0).toUpperCase() + product.tipo_instalacion.slice(1)}</li>` : ""}
         </ul>
-        <div class="price">${priceMarkup}</div>
+        ${product.destacado_editorial ? `<p class="product-quote">${product.destacado_editorial}</p>` : ""}
         <div class="card-actions">
-          ${amazonButton}
-          <a class="btn btn-details" href="${detailHref}">Ver detalles</a>
+          ${cbAmazonButton(product)}
+          <a class="btn btn-details" href="${detailHref}">Ver análisis</a>
         </div>
       </div>
     </article>

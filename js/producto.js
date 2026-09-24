@@ -42,9 +42,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const container = document.getElementById("detail-content");
 
   let product = null;
+  let products = [];
   try {
     const response = await fetch("data/products.json");
-    const products = await response.json();
+    products = await response.json();
     product = products.find((p) => p.id === id) || null;
   } catch (error) {
     console.error("No se pudo cargar el catálogo de productos:", error);
@@ -67,54 +68,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.location.replace(`producto/${encodeURIComponent(product.id)}.html`);
   return;
 
-  document.title = `${product.name} | CalorBrasa`;
+  document.title = `${cbName(product)}: análisis, gasto y opiniones | CalorBrasa`;
   const descriptionMeta = document.getElementById("page-description");
   if (descriptionMeta && product.description) {
     descriptionMeta.setAttribute("content", product.description);
   }
   injectProductSchema(product);
 
+  window.__cbAll = products;
   container.innerHTML = renderDetail(product);
   initRadarChart(product);
   attachCardClickGuards();
 });
 
-// Marcado schema.org/Product para que Google pueda mostrar precio y
-// estrellas directamente en los resultados de búsqueda (rich results).
+// Marcado schema.org/Product con nuestra propia valoración editorial.
+// No se publican precio ni estrellas de Amazon (deben estar siempre
+// actualizados según las normas de Afiliados de Amazon).
 function injectProductSchema(product) {
-  const price = product.discountedPrice != null ? product.discountedPrice : product.retailPrice;
-
+  const nota = cbNota(product);
   const schema = {
     "@context": "https://schema.org/",
     "@type": "Product",
-    name: product.name,
+    name: cbName(product),
     description: product.description || product.destacado_editorial || undefined,
     image: product.image_url ? [product.image_url] : undefined,
     sku: product.id,
     brand: product.marca ? { "@type": "Brand", name: product.marca } : undefined,
   };
-
-  if (!isPendingLink(product.affiliate_link) && typeof price === "number") {
-    schema.offers = {
-      "@type": "Offer",
-      url: product.affiliate_link,
-      priceCurrency: "EUR",
-      price,
-      availability: "https://schema.org/InStock",
-      itemCondition: "https://schema.org/NewCondition",
+  if (nota != null) {
+    schema.review = {
+      "@type": "Review",
+      author: { "@type": "Organization", name: "CalorBrasa" },
+      reviewRating: { "@type": "Rating", ratingValue: Number(nota.toFixed(1)), bestRating: 10, worstRating: 0 },
+      reviewBody: product.destacado_editorial || undefined,
     };
   }
-
-  if (typeof product.valoracion_media === "number" && product.resenas_cantidad > 0) {
-    schema.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: product.valoracion_media,
-      reviewCount: product.resenas_cantidad,
-      bestRating: 5,
-      worstRating: 1,
-    };
-  }
-
   const script = document.createElement("script");
   script.type = "application/ld+json";
   script.textContent = JSON.stringify(schema);
@@ -127,23 +115,49 @@ function isPendingLink(link) {
 
 function amazonCta(product, extraClass = "") {
   if (isPendingLink(product.affiliate_link)) {
-    return `<span class="btn btn-amazon is-disabled ${extraClass}">🛒 Enlace pendiente</span>`;
+    return `<span class="btn btn-amazon is-disabled ${extraClass}">Enlace pendiente</span>`;
   }
-  return `<a class="btn btn-amazon ${extraClass}" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
+  return `<a class="btn btn-amazon ${extraClass}" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>Ver precio en Amazon</a>`;
+}
+
+// Alternativas: misma categoría, superficie parecida, mejor nota primero
+function renderAlternatives(product) {
+  const all = window.__cbAll || [];
+  const m2 = product.superficie_calefactable_m2 || 0;
+  // Quita el color del nombre para no sugerir el mismo modelo en otro color
+  const base = (p) => cbName(p).toLowerCase().replace(/\b(blanco|blanca|negro|negra|rojo|roja|gris|burdeos|marfil|beige|antracita|bronce|crema|plata|marr[oó]n)\b/g, "").replace(/\s+/g, " ").trim();
+  const seen = new Set([base(product)]);
+  const alts = all
+    .filter((p) => p.category === product.category && p.id !== product.id)
+    .filter((p) => { const b = base(p); if (seen.has(b)) return false; seen.add(b); return true; })
+    .sort((a, b) => Math.abs((a.superficie_calefactable_m2 || 0) - m2) - Math.abs((b.superficie_calefactable_m2 || 0) - m2) || (cbNota(b) || 0) - (cbNota(a) || 0))
+    .slice(0, 6)
+    .sort((a, b) => (cbNota(b) || 0) - (cbNota(a) || 0))
+    .slice(0, 3);
+  if (!alts.length) return "";
+  return `
+    <section class="detail-alts">
+      <h2>Alternativas parecidas</h2>
+      <p class="section-note">Otros modelos que calientan una superficie similar.</p>
+      <div class="detail-alts-grid">
+        ${alts.map((p) => `
+          <a class="detail-alt" href="producto.html?id=${encodeURIComponent(p.id)}">
+            <div class="detail-alt-img">${cbImg(p)}</div>
+            <div class="detail-alt-body">
+              <span class="detail-alt-name">${cbName(p)}</span>
+              <span class="detail-alt-specs">${p.potencia_kw} kW · hasta ${p.superficie_calefactable_m2} m²${typeof p.coste_diario_estimado_eur === "number" ? ` · ${formatPrice(p.coste_diario_estimado_eur)}/día` : ""}</span>
+              <span class="detail-alt-foot">${cbNotaHtml(p)}<span class="detail-alt-go">Ver análisis →</span></span>
+            </div>
+          </a>`).join("")}
+      </div>
+    </section>`;
 }
 
 function renderDetail(product) {
-  const hasDiscount = product.discountedPrice != null && product.discountedPrice < product.retailPrice;
+  const badges = (typeof cbComputeBadges === "function" && window.__cbAll) ? (cbComputeBadges(window.__cbAll)[product.id] || []) : [];
+  const priceRow = `${cbNotaHtml(product, true)}<span class="detail-gama">${cbPriceHtml(product, { big: true })}${cbHasApiPrice(product) ? "" : "<small>Consulta el precio actual y los gastos de envío en Amazon.</small>"}</span>`;
 
-  const priceRow = hasDiscount
-    ? `<span class="price-current">${formatPrice(product.discountedPrice)}</span>
-       <span class="price-original">${formatPrice(product.retailPrice)}</span>`
-    : `<span class="price-current">${formatPrice(product.retailPrice)}</span>`;
-
-  const imageMarkup = product.image_url
-    ? `<img src="${product.image_url}" alt="${product.name}" loading="lazy"
-         onerror="this.remove()">`
-    : "";
+  const imageMarkup = cbImg(product);
 
   const specsMarkup = SPEC_FIELDS
     .filter((spec) => {
@@ -195,13 +209,9 @@ function renderDetail(product) {
   const reviewsMarkup = product.resenas_resumen
     ? `
     <div class="reviews-block">
-      <h2 style="margin-bottom:6px;">Opiniones de clientes</h2>
-      ${
-        typeof product.valoracion_media === "number"
-          ? `<div class="stars">★★★★★ <span style="color:var(--color-text-muted); font-size:1rem;">${product.valoracion_media.toFixed(1)}/5 · ${product.resenas_cantidad ?? 0} reseñas</span></div>`
-          : ""
-      }
+      <h2 style="margin-bottom:6px;">Lo que destacan los compradores</h2>
       <blockquote>“${product.resenas_resumen}”</blockquote>
+      <p class="section-note">Resumen elaborado por CalorBrasa. Consulta las opiniones completas en Amazon.</p>
     </div>`
     : "";
 
@@ -210,7 +220,8 @@ function renderDetail(product) {
       <section class="detail-top">
         <div class="detail-hero">
           <div class="eyebrow">${DETAIL_CATEGORY_LABELS[product.category] || product.category}${product.marca ? ` · ${product.marca}` : ""}</div>
-          <h1>${product.name}</h1>
+          ${badges.length ? `<div class="detail-badges">${cbBadgeHtml(badges)}</div>` : ""}
+          <h1>${cbName(product)}</h1>
           ${product.destacado_editorial ? `<p class="destacado">${product.destacado_editorial}</p>` : ""}
           <div class="price-row">${priceRow}</div>
           <div class="hero-cta-row">
@@ -244,6 +255,13 @@ function renderDetail(product) {
       ${product.description ? `<div class="detail-description"><h2>Descripción</h2><p>${product.description}</p></div>` : ""}
 
       <div class="cta-band">${amazonCta(product)}</div>
+
+      ${renderAlternatives(product)}
+
+      <div class="detail-sticky" aria-hidden="false">
+        <span class="detail-sticky-name">${cbName(product)}</span>
+        ${amazonCta(product)}
+      </div>
     </article>
   `;
 }

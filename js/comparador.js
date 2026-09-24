@@ -162,7 +162,7 @@ function openSuggestions(index, query, suggestionsEl, inputEl) {
 
   suggestionsEl.innerHTML = matches.length
     ? matches
-        .map((p) => `<li data-id="${p.id}">${p.marca ? `${p.marca} — ` : ""}${p.name}</li>`)
+        .map((p) => `<li data-id="${p.id}">${cbName(p)}</li>`)
         .join("")
     : `<li class="suggestion-empty">Sin resultados</li>`;
 
@@ -186,9 +186,9 @@ function isPendingLink(link) {
 
 function amazonCta(product) {
   if (isPendingLink(product.affiliate_link)) {
-    return `<span class="btn btn-amazon is-disabled">🛒 Enlace pendiente</span>`;
+    return `<span class="btn btn-amazon is-disabled">Enlace pendiente</span>`;
   }
-  return `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>🛒 Comprar en Amazon</a>`;
+  return `<a class="btn btn-amazon" href="${product.affiliate_link}" target="_blank" rel="nofollow sponsored noopener" ${gaAmazonAttrs(product)}>Ver precio en Amazon</a>`;
 }
 
 function formatDecimal(value) {
@@ -241,11 +241,11 @@ function renderTable() {
         </thead>
         <tbody>
           <tr>
-            <td class="sticky-col">💶 Precio</td>
+            <td class="sticky-col">💶 Gama de precio</td>
             ${models.map((p) => `<td>${renderPriceCell(p)}</td>`).join("")}
           </tr>
           <tr>
-            <td class="sticky-col">⭐ Valoración</td>
+            <td class="sticky-col">⭐ Nota CalorBrasa</td>
             ${models.map((p) => `<td>${renderRatingCell(p)}</td>`).join("")}
           </tr>
           ${COMPARE_SPEC_ROWS.map((spec) => renderSpecRow(spec, models)).join("")}
@@ -289,39 +289,23 @@ function renderTable() {
 }
 
 function renderModelHeader(product) {
-  const imageMarkup = product.image_url
-    ? `<img src="${product.image_url}" alt="${product.name}" onerror="this.parentElement.textContent='🔥'">`
-    : "🔥";
+  const imageMarkup = cbImg(product);
 
   return `
     <div class="compare-model-image">${imageMarkup}</div>
     ${product.isFeatured ? `<div><span class="compare-badge-featured">DESTACADO</span></div>` : ""}
-    <div class="compare-model-name">${product.name}</div>
-    ${product.marca ? `<div class="compare-model-brand">${product.marca}</div>` : ""}
+    <div class="compare-model-name">${cbName(product)}</div>
     ${amazonCta(product)}
   `;
 }
 
+// Sin precio exacto: tramo orientativo (el precio actual se ve en Amazon)
 function renderPriceCell(product) {
-  const hasDiscount = product.discountedPrice != null && product.discountedPrice < product.retailPrice;
-  const current = hasDiscount ? product.discountedPrice : product.retailPrice;
-
-  let html = `<div class="compare-price-current">${formatPrice(current)}</div>`;
-  if (hasDiscount) {
-    const pct = Math.round((1 - product.discountedPrice / product.retailPrice) * 100);
-    html += `<span class="compare-price-original">${formatPrice(product.retailPrice)}</span><span class="compare-discount-badge">-${pct}%</span>`;
-  }
-  if (product.rango_precio) {
-    html += `<div><span class="price-range-badge">${product.rango_precio}</span></div>`;
-  }
-  return html;
+  return cbPriceHtml(product) || '<span class="compare-empty-value">—</span>';
 }
 
 function renderRatingCell(product) {
-  if (typeof product.valoracion_media !== "number") {
-    return '<span class="compare-empty-value">—</span>';
-  }
-  return `<div class="compare-rating"><span class="stars">★★★★★</span> ${product.valoracion_media.toFixed(1)} <span style="color:var(--color-text-muted);">(${product.resenas_cantidad ?? 0})</span></div>`;
+  return cbNotaHtml(product) || '<span class="compare-empty-value">—</span>';
 }
 
 function renderSpecRow(spec, models) {

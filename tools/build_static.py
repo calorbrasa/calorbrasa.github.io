@@ -16,7 +16,7 @@ Vuelve a ejecutarlo cada vez que cambies data/products.json.
 
 import json
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from html import escape
 
 SITE = "https://calorbrasa.github.io"
@@ -188,6 +188,129 @@ def is_pending(link):
     return not link or link.strip().upper() == "PENDIENTE"
 
 
+# ---- Nota CalorBrasa, gama de precio, insignias (igual que js/main.js)
+
+SCORE_KEYS = ["score_eficiencia", "score_confort", "score_potencia",
+              "score_autonomia", "score_facilidad_uso", "score_calidad_precio"]
+
+GAMAS = {
+    "bajo": ("€", "Gama económica", "menos de 200 €"),
+    "medio": ("€€", "Gama media", "200–700 €"),
+    "alto": ("€€€", "Gama alta", "más de 700 €"),
+}
+
+# Precio exacto SOLO si viene de la Creators API de Amazon (campos precio_api y
+# precio_api_fecha) y tiene menos de 24 h. Normas de Afiliados de Amazon.
+PRICE_MAX_AGE_H = 24
+PRICE_DISCLAIMER = (
+    "Los precios y disponibilidad del Producto son precisos en la fecha y hora indicados y están "
+    "sujetos a cambios. El precio y la disponibilidad que se muestren en Amazon.es en el momento de "
+    "la compra serán los que se apliquen a la compra del producto."
+)
+
+
+def nota(p):
+    vals = [p[k] for k in SCORE_KEYS if isinstance(p.get(k), (int, float))]
+    return sum(vals) / len(vals) if vals else None
+
+
+def nota_text(p):
+    n = nota(p)
+    return "–" if n is None else f"{n:.1f}".replace(".", ",")
+
+
+def nota_html(p, big=False):
+    n = nota(p)
+    if n is None:
+        return ""
+    lvl = "top" if n >= 8 else "good" if n >= 7 else "ok"
+    return (
+        f'<span class="cb-nota cb-nota-{lvl}{" cb-nota-big" if big else ""}" '
+        'title="Nota CalorBrasa: media de eficiencia, confort, potencia, autonomía, facilidad de uso y calidad-precio">'
+        f"<b>{nota_text(p)}</b><small>Nota CalorBrasa</small></span>"
+    )
+
+
+def gama_html(p):
+    g = GAMAS.get(p.get("rango_precio"))
+    if not g:
+        return ""
+    return f'<span class="cb-gama"><b>{g[0]}</b> {g[1]} <span>· {g[2]}</span></span>'
+
+
+def has_api_price(p):
+    if not isinstance(p.get("precio_api"), (int, float)) or not p.get("precio_api_fecha"):
+        return False
+    try:
+        when = datetime.fromisoformat(str(p["precio_api_fecha"]).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    age_h = (datetime.now(timezone.utc) - when).total_seconds() / 3600
+    return 0 <= age_h <= PRICE_MAX_AGE_H
+
+
+def price_html(p, big=False):
+    """Precio de la API con fecha y hora; si no lo hay, la gama de precio."""
+    if not has_api_price(p):
+        return gama_html(p)
+    when = datetime.fromisoformat(str(p["precio_api_fecha"]).replace("Z", "+00:00"))
+    stamp = when.astimezone().strftime("%d/%m/%Y %H:%M")
+    return (
+        f'<span class="cb-price{" cb-price-big" if big else ""}"><b>{fmt_price(p["precio_api"])}</b>'
+        f"<small>Precio en Amazon.es a {stamp}. Puede cambiar.</small></span>"
+    )
+
+
+def cb_name(p):
+    name = str(p.get("name") or "")
+    marca = p.get("marca")
+    if not marca or name.upper().startswith(str(marca).upper()):
+        return name
+    return f"{marca} {name}"
+
+
+BADGES = [
+    ("top", "Mejor valorada", lambda x: nota(x) or 0),
+    ("calidad", "Mejor calidad-precio", lambda x: (x.get("score_calidad_precio") or 0) * 10 + (nota(x) or 0)),
+    ("gasto", "Menos gasto diario", lambda x: -x["coste_diario_estimado_eur"] if isinstance(x.get("coste_diario_estimado_eur"), (int, float)) else None),
+    ("eficiente", "Más eficiente", lambda x: (x.get("score_eficiencia") or 0) * 10 + (nota(x) or 0)),
+]
+
+
+def compute_badges(products):
+    """Una insignia por producto como máximo, por categoría (mismo criterio que la web)."""
+    out = {}
+    for cat in dict.fromkeys(x["category"] for x in products):
+        pool = [x for x in products if x["category"] == cat]
+        for key, label, fn in BADGES:
+            best, best_v = None, None
+            for x in pool:
+                v = fn(x)
+                if v is not None and (best_v is None or v > best_v):
+                    best, best_v = x, v
+            if best is None:
+                continue
+            out[best["id"]] = [(key, label)]
+            pool = [x for x in pool if x["id"] != best["id"]]
+    return out
+
+
+def badges_html(badges):
+    return "".join(f'<span class="cb-badge cb-badge-{k}">{e(label)}</span>' for k, label in (badges or []))
+
+
+def img_html(p, cls=""):
+    fallback = "window.cbImgFail?cbImgFail(this):this.remove()"
+    if not p.get("image_url"):
+        return '<span class="cb-img-fallback" aria-hidden="true"><img src="/assets/favicon.svg" alt=""></span>'
+    return (
+        f'<img class="{cls}" src="{e(p["image_url"])}" alt="{e(cb_name(p))}" loading="lazy" '
+        f'onerror="{fallback}">'
+    )
+
+
 def product_url(p):
     return f"/producto/{p['id']}.html"
 
@@ -205,10 +328,10 @@ def ga_attrs(p):
 
 def amazon_cta(p, extra=""):
     if is_pending(p.get("affiliate_link")):
-        return f'<span class="btn btn-amazon is-disabled {extra}">🛒 Enlace pendiente</span>'
+        return f'<span class="btn btn-amazon is-disabled {extra}">Enlace pendiente</span>'
     return (
         f'<a class="btn btn-amazon {extra}" href="{e(p["affiliate_link"])}" target="_blank" '
-        f'rel="nofollow sponsored noopener" {ga_attrs(p)}>🛒 Comprar en Amazon</a>'
+        f'rel="nofollow sponsored noopener" {ga_attrs(p)}>Ver precio en Amazon</a>'
     )
 
 
@@ -222,14 +345,21 @@ def json_ld(obj):
 
 # ---------------------------------------------------------------- plantilla
 
-def nav_links():
+NAV_SHORT = {
+    "pellets": "Pellets", "lena-biomasa": "Leña", "electricos": "Eléctricos",
+    "gas": "Gas", "radiadores": "Radiadores",
+}
+
+
+def nav_links(short=False):
     items = "".join(
-        f'<li><a href="{category_url(c)}">{e(CATEGORIES[c]["label"])}</a></li>' for c in CATEGORIES
+        f'<li><a href="{category_url(c)}">{e(NAV_SHORT[c] if short else CATEGORIES[c]["label"])}</a></li>'
+        for c in CATEGORIES
     )
     return items
 
 
-def page(title, description, canonical, body, extra_head="", scripts=""):
+def page(title, description, canonical, body, extra_head="", scripts="", price_notice=False):
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -260,13 +390,13 @@ def page(title, description, canonical, body, extra_head="", scripts=""):
 
   <header class="site-header">
     <div class="container header-inner">
-      <a href="/" class="logo">🔥 Calor<span>Brasa</span></a>
+      <a href="/" class="logo"><img src="/assets/favicon.svg" alt="" width="34" height="34"><span class="logo-word">Calor<span>Brasa</span></span></a>
 
-      <nav class="main-nav" id="main-nav">
+      <nav class="main-nav" id="main-nav" aria-label="Principal">
         <ul>
-          {nav_links()}
+          {nav_links(short=True)}
           <li><a href="/comparador.html">Comparador</a></li>
-          <li><a href="/asistente.html" class="nav-quiz-link">🧭 ¿Cuál elijo?</a></li>
+          <li><a href="/asistente.html" class="nav-quiz-link">¿Cuál elijo?</a></li>
         </ul>
       </nav>
 
@@ -278,7 +408,7 @@ def page(title, description, canonical, body, extra_head="", scripts=""):
 
 {body}
 
-  <p class="affiliate-notice">Como Afiliado de Amazon, CalorBrasa obtiene ingresos por las compras adscritas que cumplen los requisitos aplicables.</p>
+  <p class="affiliate-notice">Como Afiliado de Amazon, CalorBrasa obtiene ingresos por las compras adscritas que cumplen los requisitos aplicables. El precio y la disponibilidad de cada producto se consultan en Amazon.{(" " + PRICE_DISCLAIMER) if price_notice else ""}</p>
 
   <footer class="site-footer">
     <div class="container">
@@ -286,11 +416,21 @@ def page(title, description, canonical, body, extra_head="", scripts=""):
         <div>
           <h4>CalorBrasa</h4>
           <p style="color:#d8d3cf; font-size:0.88rem;">Guías y comparativas para elegir la calefacción perfecta para tu hogar.</p>
+          <a href="/asistente.html" class="btn btn-quiz" style="margin-top:6px;">¿Cuál elijo?</a>
         </div>
         <div>
           <h4>Categorías</h4>
           <ul>
             {nav_links()}
+          </ul>
+        </div>
+        <div>
+          <h4>Herramientas</h4>
+          <ul>
+            <li><a href="/asistente.html">Asistente: ¿cuál elijo?</a></li>
+            <li><a href="/comparador.html">Comparador de estufas</a></li>
+            <li><a href="/#calculadora">Calcula tu gasto</a></li>
+            <li><a href="/#preguntas">Preguntas frecuentes</a></li>
           </ul>
         </div>
         <div>
@@ -348,42 +488,33 @@ def breadcrumb(items):
     return html, json_ld(schema)
 
 
-def product_card(p):
-    img = (
-        f'<img src="{e(p["image_url"])}" alt="{e(p["name"])}" loading="lazy" '
-        "onerror=\"this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🔥',style:'font-size:2.5rem'}))\">"
-        if p.get("image_url")
-        else '<span style="font-size:2.5rem;">🔥</span>'
-    )
-    if has_discount(p):
-        price = (
-            f'<span style="text-decoration:line-through; color:var(--color-text-muted); font-weight:500; '
-            f'font-size:0.85rem; margin-right:6px;">{fmt_price(p["retailPrice"])}</span>{fmt_price(p["discountedPrice"])}'
-        )
-    else:
-        price = fmt_price(p["retailPrice"])
-    rating = f'{p["valoracion_media"]:.1f}'.replace(".", ",") if isinstance(p.get("valoracion_media"), (int, float)) and (p.get("resenas_cantidad") or 0) > 0 else "-"
+def product_card(p, badges=None):
+    url = product_url(p)
     specs = []
+    if p.get("superficie_calefactable_m2") is not None:
+        specs.append(f'<li>📐 Calienta hasta <b>{fmt_num(p["superficie_calefactable_m2"])} m²</b></li>')
     if p.get("potencia_kw") is not None:
         specs.append(f'<li>⚡ Potencia: {fmt_num(p["potencia_kw"])} kW</li>')
-    if p.get("superficie_calefactable_m2") is not None:
-        specs.append(f'<li>📐 Superficie: hasta {fmt_num(p["superficie_calefactable_m2"])} m²</li>')
     if p.get("coste_diario_estimado_eur") is not None:
-        specs.append(f'<li>💶 Coste estimado: {fmt_price(p["coste_diario_estimado_eur"])}/día (8h)</li>')
-    url = product_url(p)
-    brand = f'{e(p["marca"])} — ' if p.get("marca") and not p["name"].lower().startswith(p["marca"].lower()) else ""
+        specs.append(f'<li>💶 Gasto: <b>{fmt_price(p["coste_diario_estimado_eur"])}/día</b> (8 h)</li>')
+    if p.get("tipo_instalacion"):
+        inst = str(p["tipo_instalacion"])
+        specs.append(f"<li>🔧 {e(inst[:1].upper() + inst[1:])}</li>")
+    quote = f'<p class="product-quote">{e(p["destacado_editorial"])}</p>' if p.get("destacado_editorial") else ""
+    badge_row = f'<div class="product-badges">{badges_html(badges)}</div>' if badges else ""
     return f"""
       <article class="product-card">
-        <a class="product-image" href="{url}" tabindex="-1" aria-hidden="true">{img}</a>
+        {badge_row}
+        <a class="product-image" href="{url}" tabindex="-1" aria-hidden="true">{img_html(p)}</a>
         <div class="product-body">
           <span class="category-tag">{e(CATEGORIES[p["category"]]["label"])}</span>
-          <h3><a href="{url}" style="color:inherit; text-decoration:none;">{brand}{e(p["name"])}</a></h3>
-          <div class="rating">★★★★★ <span>{rating} ({p.get("resenas_cantidad") or 0})</span></div>
+          <h3><a href="{url}" style="color:inherit; text-decoration:none;">{e(cb_name(p))}</a></h3>
+          <div class="product-score">{nota_html(p)}{price_html(p)}</div>
           <ul class="specs">{"".join(specs)}</ul>
-          <div class="price">{price}</div>
+          {quote}
           <div class="card-actions">
             {amazon_cta(p)}
-            <a class="btn btn-details" href="{url}">Ver detalles</a>
+            <a class="btn btn-details" href="{url}">Ver análisis</a>
           </div>
         </div>
       </article>"""
@@ -392,10 +523,11 @@ def product_card(p):
 # ---------------------------------------------------------------- fichas
 
 def product_schema(p):
+    """Product + valoración editorial propia (sin precio ni estrellas de Amazon)."""
     schema = {
         "@context": "https://schema.org/",
         "@type": "Product",
-        "name": p["name"],
+        "name": cb_name(p),
         "description": p.get("description") or p.get("destacado_editorial"),
         "sku": p["id"],
         "url": SITE + product_url(p),
@@ -404,22 +536,13 @@ def product_schema(p):
         schema["image"] = [p["image_url"]]
     if p.get("marca"):
         schema["brand"] = {"@type": "Brand", "name": p["marca"]}
-    if not is_pending(p.get("affiliate_link")) and isinstance(price_of(p), (int, float)):
-        schema["offers"] = {
-            "@type": "Offer",
-            "url": p["affiliate_link"],
-            "priceCurrency": "EUR",
-            "price": price_of(p),
-            "availability": "https://schema.org/InStock",
-            "itemCondition": "https://schema.org/NewCondition",
-        }
-    if isinstance(p.get("valoracion_media"), (int, float)) and (p.get("resenas_cantidad") or 0) > 0:
-        schema["aggregateRating"] = {
-            "@type": "AggregateRating",
-            "ratingValue": p["valoracion_media"],
-            "reviewCount": p["resenas_cantidad"],
-            "bestRating": 5,
-            "worstRating": 1,
+    n = nota(p)
+    if n is not None:
+        schema["review"] = {
+            "@type": "Review",
+            "author": {"@type": "Organization", "name": "CalorBrasa"},
+            "reviewRating": {"@type": "Rating", "ratingValue": round(n, 1), "bestRating": 10, "worstRating": 0},
+            "reviewBody": p.get("destacado_editorial"),
         }
     return json_ld({k: v for k, v in schema.items() if v is not None})
 
@@ -428,19 +551,10 @@ def build_product(p, all_products):
     cat = CATEGORIES[p["category"]]
     url = product_url(p)
 
-    if has_discount(p):
-        price_row = (
-            f'<span class="price-current">{fmt_price(p["discountedPrice"])}</span>'
-            f'<span class="price-original">{fmt_price(p["retailPrice"])}</span>'
-        )
-    else:
-        price_row = f'<span class="price-current">{fmt_price(p["retailPrice"])}</span>'
-
-    img = (
-        f'<img src="{e(p["image_url"])}" alt="{e(p["name"])}" onerror="this.remove()">'
-        if p.get("image_url")
-        else ""
-    )
+    price_note = "" if has_api_price(p) else "<small>Consulta el precio actual y los gastos de envío en Amazon.</small>"
+    price_row = f'{nota_html(p, big=True)}<span class="detail-gama">{price_html(p, big=True)}{price_note}</span>'
+    img = img_html(p)
+    badge_row = f'<div class="detail-badges">{badges_html(BADGE_MAP.get(p["id"]))}</div>' if BADGE_MAP.get(p["id"]) else ""
 
     specs = []
     for key, icon, label, fmt, hide_zero in SPEC_FIELDS:
@@ -491,15 +605,10 @@ def build_product(p, all_products):
 
     reviews = ""
     if p.get("resenas_resumen"):
-        stars = ""
-        if isinstance(p.get("valoracion_media"), (int, float)) and (p.get("resenas_cantidad") or 0) > 0:
-            stars = (
-                f'<div class="stars">★★★★★ <span style="color:var(--color-text-muted); font-size:1rem;">'
-                f'{fmt_num(round(p["valoracion_media"], 1))}/5 · {p.get("resenas_cantidad") or 0} reseñas</span></div>'
-            )
         reviews = (
-            f'<div class="reviews-block"><h2 style="margin-bottom:6px;">Opiniones de clientes</h2>{stars}'
-            f'<blockquote>“{e(p["resenas_resumen"])}”</blockquote></div>'
+            '<div class="reviews-block"><h2 style="margin-bottom:6px;">Lo que destacan los compradores</h2>'
+            f'<blockquote>“{e(p["resenas_resumen"])}”</blockquote>'
+            '<p class="section-note">Resumen elaborado por CalorBrasa. Consulta las opiniones completas en Amazon.</p></div>'
         )
 
     description = (
@@ -508,22 +617,39 @@ def build_product(p, all_products):
         else ""
     )
 
-    # Productos relacionados: misma categoría, precio más parecido
-    related = sorted(
+    # Productos relacionados: misma categoría y superficie parecida, sin repetir
+    # el mismo modelo en otro color; primero los de mejor nota.
+    def base_name(x):
+        import re as _re
+        n = _re.sub(r"\b(blanco|blanca|negro|negra|rojo|roja|gris|burdeos|marfil|beige|antracita|bronce|crema|plata|marr[oó]n)\b", "", cb_name(x).lower())
+        return " ".join(n.split())
+    seen = {base_name(p)}
+    m2 = p.get("superficie_calefactable_m2") or 0
+    candidates = sorted(
         (x for x in all_products if x["category"] == p["category"] and x["id"] != p["id"]),
-        key=lambda x: abs(price_of(x) - price_of(p)),
-    )[:4]
+        key=lambda x: (abs((x.get("superficie_calefactable_m2") or 0) - m2), -(nota(x) or 0)),
+    )
+    related = []
+    for x in candidates:
+        b = base_name(x)
+        if b in seen:
+            continue
+        seen.add(b)
+        related.append(x)
+        if len(related) == 4:
+            break
+    related.sort(key=lambda x: -(nota(x) or 0))
     related_html = ""
     if related:
         related_html = (
             f'<section class="related-products"><h2>Otras {e(cat["label"].lower())} que te pueden interesar</h2>'
-            f'<div class="product-grid">{"".join(product_card(x) for x in related)}</div>'
+            f'<div class="product-grid">{"".join(product_card(x, BADGE_MAP.get(x["id"])) for x in related)}</div>'
             f'<p style="margin-top:18px;"><a class="btn btn-outline" href="{category_url(p["category"])}">Ver todas las {e(cat["label"].lower())}</a></p>'
             "</section>"
         )
 
     bc_html, bc_schema = breadcrumb(
-        [("Inicio", "/"), (cat["label"], category_url(p["category"])), (p["name"], None)]
+        [("Inicio", "/"), (cat["label"], category_url(p["category"])), (cb_name(p), None)]
     )
 
     eyebrow = e(cat["label"]) + (f' · {e(p["marca"])}' if p.get("marca") else "")
@@ -535,7 +661,8 @@ def build_product(p, all_products):
       <section class="detail-top">
         <div class="detail-hero">
           <div class="eyebrow">{eyebrow}</div>
-          <h1>{e(p["name"])}</h1>
+          {badge_row}
+          <h1>{e(cb_name(p))}</h1>
           {destacado}
           <div class="price-row">{price_row}</div>
           <div class="hero-cta-row">
@@ -571,6 +698,11 @@ def build_product(p, all_products):
     </article>
 
     {related_html}
+
+    <div class="detail-sticky">
+      <span class="detail-sticky-name">{e(cb_name(p))}</span>
+      {amazon_cta(p)}
+    </div>
   </main>"""
 
     scripts = f"""  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -610,7 +742,8 @@ def build_product(p, all_products):
         extra_head += f'  <meta property="og:image" content="{e(p["image_url"])}">\n'
     extra_head += "  " + product_schema(p) + "\n  " + bc_schema + "\n"
 
-    return page(title, desc, url, body, extra_head, scripts)
+    shows_price = has_api_price(p) or any(has_api_price(x) for x in related)
+    return page(title, desc, url, body, extra_head, scripts, price_notice=shows_price)
 
 
 # ---------------------------------------------------------------- categorías
@@ -619,20 +752,22 @@ def build_category(cat_key, all_products):
     cat = CATEGORIES[cat_key]
     url = category_url(cat_key)
     items = [p for p in all_products if p["category"] == cat_key]
+    import math
     items.sort(
-        key=lambda p: (-(1 if p.get("isFeatured") else 0), -score(p))
+        key=lambda p: (-(1 if (p.get("isFeatured") or BADGE_MAP.get(p["id"])) else 0),
+                       -((nota(p) or 0) * math.log((p.get("resenas_cantidad") or 0) + 3)))
     )
-    prices = [price_of(p) for p in items]
     costs = [p["coste_diario_estimado_eur"] for p in items if p.get("coste_diario_estimado_eur") is not None]
     surfaces = [p["superficie_calefactable_m2"] for p in items if p.get("superficie_calefactable_m2") is not None]
 
-    top = sorted(items, key=lambda p: -score(p))[:3]
-    cheapest = min(items, key=price_of)
+    top = sorted(items, key=lambda p: -(nota(p) or 0))[:3]
+    cheapest = min(items, key=price_of)  # solo para saber cuál es; no se muestra el precio
+    gamas = [g for g in ("bajo", "medio", "alto") if any(p.get("rango_precio") == g for p in items)]
     cheapest_run = min((p for p in items if p.get("coste_diario_estimado_eur") is not None), key=lambda p: p["coste_diario_estimado_eur"], default=None)
 
     stats = [
         f"<li><strong>{len(items)}</strong> modelos analizados</li>",
-        f"<li>Precios desde <strong>{fmt_price(min(prices))}</strong> hasta <strong>{fmt_price(max(prices))}</strong></li>",
+        ("<li>Gamas de precio: " if len(gamas) > 1 else "<li>Gama de precio: ") + ", ".join(f"<strong>{GAMAS[g][0]} {GAMAS[g][1].replace('Gama ', '')}</strong> ({GAMAS[g][2]})" for g in gamas) + "</li>",
     ]
     if costs:
         stats.append(
@@ -644,13 +779,13 @@ def build_category(cat_key, all_products):
         )
 
     highlights = [
-        f'<li><strong>Mejor valorada:</strong> <a href="{product_url(top[0])}">{e(top[0]["name"])}</a> '
-        f'({fmt_num(round(top[0]["valoracion_media"], 1))}/5, {top[0].get("resenas_cantidad") or 0} opiniones)</li>',
-        f'<li><strong>Más barata:</strong> <a href="{product_url(cheapest)}">{e(cheapest["name"])}</a> ({fmt_price(price_of(cheapest))})</li>',
+        f'<li><strong>Mejor valorada:</strong> <a href="{product_url(top[0])}">{e(cb_name(top[0]))}</a> '
+        f'(Nota CalorBrasa {nota_text(top[0])})</li>',
+        f'<li><strong>Más asequible:</strong> <a href="{product_url(cheapest)}">{e(cb_name(cheapest))}</a></li>',
     ]
     if cheapest_run:
         highlights.append(
-            f'<li><strong>Menor coste de uso:</strong> <a href="{product_url(cheapest_run)}">{e(cheapest_run["name"])}</a> '
+            f'<li><strong>Menor coste de uso:</strong> <a href="{product_url(cheapest_run)}">{e(cb_name(cheapest_run))}</a> '
             f'({fmt_price(cheapest_run["coste_diario_estimado_eur"])}/día)</li>'
         )
 
@@ -662,7 +797,7 @@ def build_category(cat_key, all_products):
             "@type": "ItemList",
             "name": cat["h1"],
             "itemListElement": [
-                {"@type": "ListItem", "position": i + 1, "url": SITE + product_url(p), "name": p["name"]}
+                {"@type": "ListItem", "position": i + 1, "url": SITE + product_url(p), "name": cb_name(p)}
                 for i, p in enumerate(items)
             ],
         }
@@ -691,7 +826,7 @@ def build_category(cat_key, all_products):
       <p class="section-subtitle">¿Quieres filtrar por precio, superficie o marca? Usa el
         <a href="/productos.html?categoria={cat_key}">catálogo con filtros</a> o el
         <a href="/asistente.html">asistente “¿Cuál elijo?”</a>.</p>
-      <div class="product-grid">{"".join(product_card(p) for p in items)}</div>
+      <div class="product-grid">{"".join(product_card(p, BADGE_MAP.get(p["id"])) for p in items)}</div>
     </section>
 
     <section class="category-guide">
@@ -703,11 +838,11 @@ def build_category(cat_key, all_products):
 
     title = f'{cat["title"]} ({date.today().year}) | CalorBrasa'
     desc = truncate(
-        f'Comparamos {len(items)} {cat["label"].lower()} con precio, potencia, superficie, coste de uso y opiniones. '
-        f'Desde {fmt_price(min(prices))}. Encuentra la mejor para tu casa.'
+        f'Comparamos {len(items)} {cat["label"].lower()} por potencia, metros que calientan, gasto diario y nuestra '
+        f'Nota CalorBrasa. Encuentra la mejor para tu casa.'
     )
     extra_head = "  " + item_list + "\n  " + bc_schema + "\n"
-    return page(title, desc, url, body, extra_head)
+    return page(title, desc, url, body, extra_head, price_notice=any(has_api_price(p) for p in items))
 
 
 # ---------------------------------------------------------------- sitemap
@@ -740,9 +875,14 @@ def build_sitemap(products):
 
 # ---------------------------------------------------------------- main
 
+BADGE_MAP = {}
+
+
 def main():
+    global BADGE_MAP
     with open(os.path.join(ROOT, "data", "products.json"), encoding="utf-8") as f:
         products = json.load(f)
+    BADGE_MAP = compute_badges(products)
 
     prod_dir = os.path.join(ROOT, "producto")
     cat_dir = os.path.join(ROOT, "categoria")

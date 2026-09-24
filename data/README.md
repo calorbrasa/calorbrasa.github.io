@@ -156,3 +156,20 @@ python3 tools/build_static.py
 Regenera `producto/<id>.html` (una ficha estática por producto), `categoria/*.html`
 (una página por categoría) y `sitemap.xml`. Estas son las URLs que indexa Google;
 `producto.html?id=...` redirige automáticamente a la ficha estática.
+
+## Precios reales de Amazon (preparado, sin activar)
+
+La web solo muestra un precio exacto si el producto tiene estos dos campos,
+rellenados por un proceso automático con la Creators API de Amazon:
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `precio_api` | number | Precio en Amazon.es obtenido de la Creators API. |
+| `precio_api_fecha` | string (ISO 8601) | Fecha y hora en que se obtuvo el precio. |
+
+- Si faltan o el dato tiene más de 24 h, se muestra la gama de precio (€ / €€ / €€€),
+  tanto en las páginas dinámicas (js/main.js) como en las estáticas (tools/build_static.py).
+- Junto al precio sale la fecha y hora, y en el aviso de afiliados el texto obligatorio de Amazon.
+- **Nunca escribir estos campos a mano**: las normas de Afiliados de Amazon solo permiten mostrar
+  precios obtenidos de su API. Lo mismo con estrellas y número de reseñas.
+- Requisito para la API: 10 ventas cualificadas en los últimos 30 días.
