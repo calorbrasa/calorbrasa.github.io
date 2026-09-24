@@ -144,3 +144,15 @@ tienes el dato exacto.
 añadirlos comparo el ASIN (parte de la URL `/dp/<ASIN>`) contra los ya
 existentes en `affiliate_link` y descarto cualquier enlace que ya esté
 en el catálogo, avisándote de cuáles fueron.
+
+## Páginas estáticas para SEO
+
+Cada vez que cambies `products.json`, ejecuta desde la raíz del repo:
+
+```bash
+python3 tools/build_static.py
+```
+
+Regenera `producto/<id>.html` (una ficha estática por producto), `categoria/*.html`
+(una página por categoría) y `sitemap.xml`. Estas son las URLs que indexa Google;
+`producto.html?id=...` redirige automáticamente a la ficha estática.
