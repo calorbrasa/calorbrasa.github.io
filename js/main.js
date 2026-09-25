@@ -200,6 +200,9 @@ function formatPrice(value) {
    - Insignias: la mejor de cada tipo según nuestros datos.
    ========================================================= */
 
+// Web hermana: calculadora de calefacción
+const CB_CALC_URL = "https://calculadora-calefaccion.github.io/";
+
 const CB_SCORE_KEYS = [
   "score_eficiencia", "score_confort", "score_potencia",
   "score_autonomia", "score_facilidad_uso", "score_calidad_precio",

@@ -22,6 +22,7 @@ from html import escape
 SITE = "https://calorbrasa.github.io"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GA_ID = "G-QXVWVPP7SK"
+CALC_URL = "https://calculadora-calefaccion.github.io/"  # web hermana: calculadora de calefacción
 TODAY = date.today().isoformat()
 
 CATEGORIES = {
@@ -429,7 +430,7 @@ def page(title, description, canonical, body, extra_head="", scripts="", price_n
           <ul>
             <li><a href="/asistente.html">Asistente: ¿cuál elijo?</a></li>
             <li><a href="/comparador.html">Comparador de estufas</a></li>
-            <li><a href="/#calculadora">Calcula tu gasto</a></li>
+            <li><a href="{CALC_URL}" target="_blank" rel="noopener">Calculadora de calefacción</a></li>
             <li><a href="/#preguntas">Preguntas frecuentes</a></li>
           </ul>
         </div>
@@ -690,6 +691,11 @@ def build_product(p, all_products):
       <div class="cta-band">{amazon_cta(p)}</div>
 
       {ideal}
+      <a class="calc-callout" href="{CALC_URL}" target="_blank" rel="noopener">
+        <span class="calc-callout-icon" aria-hidden="true">€</span>
+        <span><b>¿Cuánto te costará al mes en tu casa?</b> Calcúlalo gratis según tus metros, tu provincia y lo que usas ahora.</span>
+        <span class="calc-callout-go">Abrir la calculadora →</span>
+      </a>
       {pros_cons}
       {reviews}
       {description}
@@ -828,6 +834,12 @@ def build_category(cat_key, all_products):
         <a href="/asistente.html">asistente “¿Cuál elijo?”</a>.</p>
       <div class="product-grid">{"".join(product_card(p, BADGE_MAP.get(p["id"])) for p in items)}</div>
     </section>
+
+    <a class="calc-callout" href="{CALC_URL}" target="_blank" rel="noopener">
+      <span class="calc-callout-icon" aria-hidden="true">€</span>
+      <span><b>¿Cuánto gastarás con {e(cat["label"].lower())}?</b> Compara el coste al mes con tu casa, tu provincia y tu calefacción actual.</span>
+      <span class="calc-callout-go">Abrir la calculadora →</span>
+    </a>
 
     <section class="category-guide">
       <h2>Cómo elegir: claves antes de comprar</h2>

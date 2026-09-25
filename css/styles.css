@@ -2092,7 +2092,7 @@ section.container.home-section { padding-top:72px; padding-bottom:72px; }
 .compare-model-image .cb-img-fallback { min-height:110px; border-radius:10px; }
 .cb-img-fallback img { width:34% !important; height:auto !important; max-width:70px; object-fit:contain !important; }
 .detail-alts { margin-bottom:48px; }
-.home-cats > .home-cat:last-child:nth-child(odd){grid-column:1/-1;} @media (max-width:640px){.home-cats > .home-cat:last-child:nth-child(odd){flex-direction:row;} .home-cats > .home-cat:last-child:nth-child(odd) .home-cat-img{width:40%;border-bottom:0;border-right:1px solid var(--color-border);aspect-ratio:auto;}}
+@media (max-width:640px){.home-cats > .home-cat:last-child:nth-child(odd){grid-column:1/-1;} .home-cats > .home-cat:last-child:nth-child(odd){flex-direction:row;} .home-cats > .home-cat:last-child:nth-child(odd) .home-cat-img{width:40%;border-bottom:0;border-right:1px solid var(--color-border);aspect-ratio:auto;}}
 /* Precio real (solo con datos de la Creators API de Amazon) */
 .cb-price { display:inline-flex; flex-direction:column; line-height:1.15; }
 .cb-price b { font-size:1.15rem; font-weight:800; color:var(--color-text); }
@@ -2164,3 +2164,15 @@ section.container.home-section { padding-top:72px; padding-bottom:72px; }
 /* Botón del asistente en el pie: mantiene su color de texto */
 .site-footer .btn-quiz { color: var(--color-dark); }
 .site-footer .btn-quiz:hover { color: var(--color-dark); }
+
+/* Enlaces a la web hermana: calculadora de calefacción */
+.home-calc-more { display:block; margin-top:12px; font-size:0.86rem; color:var(--color-text-muted); text-align:center; }
+.home-calc-more b { color:var(--color-primary); }
+.home-calc-more:hover b { text-decoration:underline; }
+.calc-callout { display:flex; align-items:center; gap:16px; margin:28px 0; padding:18px 22px; border-radius:14px; background:var(--color-dark); color:#fff; transition:transform .15s; }
+.calc-callout:hover { transform:translateY(-2px); }
+.calc-callout-icon { flex:none; width:44px; height:44px; border-radius:12px; background:var(--color-secondary); color:var(--color-dark); font-weight:800; font-size:1.3rem; display:flex; align-items:center; justify-content:center; }
+.calc-callout b { color:var(--color-secondary); }
+.calc-callout > span:nth-child(2) { flex:1; font-size:0.95rem; color:#e8ded6; }
+.calc-callout-go { flex:none; font-weight:800; color:var(--color-secondary); white-space:nowrap; }
+@media (max-width:640px) { .calc-callout { flex-wrap:wrap; } .calc-callout-go { width:100%; } }
