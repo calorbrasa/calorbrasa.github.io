@@ -25,6 +25,63 @@ GA_ID = "G-QXVWVPP7SK"
 CALC_URL = "https://calculadora-calefaccion.github.io/"  # web hermana: calculadora de calefacción
 TODAY = date.today().isoformat()
 
+# Guías de consumo de la calculadora (web hermana), una por categoría
+GUIDE = {
+    "pellets": ("cuanto-gasta-estufa-pellets.html", "¿Cuánto gasta una estufa de pellets?"),
+    "lena-biomasa": ("cuanto-gasta-estufa-lena.html", "¿Cuánto gasta una estufa de leña?"),
+    "electricos": ("cuanto-gasta-estufa-electrica.html", "¿Cuánto gasta una estufa eléctrica?"),
+    "gas": ("cuanto-gasta-estufa-butano.html", "¿Cuánto gasta una estufa de butano?"),
+    "radiadores": ("cuanto-gasta-estufa-electrica.html", "¿Cuánto gasta un radiador eléctrico?"),
+}
+GUIDES_FOOTER = [
+    ("cuanto-gasta-estufa-pellets.html", "Cuánto gasta una estufa de pellets"),
+    ("cuanto-gasta-estufa-lena.html", "Cuánto gasta una estufa de leña"),
+    ("cuanto-gasta-estufa-electrica.html", "Cuánto gasta una estufa eléctrica"),
+    ("cuanto-gasta-estufa-butano.html", "Cuánto gasta una estufa de butano"),
+    ("que-calefaccion-es-mas-barata.html", "Qué calefacción es más barata"),
+    ("calculadora-potencia-estufa.html", "Qué potencia necesito"),
+    ("es-peligrosa-estufa-butano.html", "¿Es peligrosa una estufa de butano?"),
+]
+POWER_GUIDE = CALC_URL + "calculadora-potencia-estufa.html"
+BUTANO_SAFETY = CALC_URL + "es-peligrosa-estufa-butano.html"
+
+
+def guide_url(cat):
+    return CALC_URL + GUIDE[cat][0]
+
+
+# ---- Gasto de uso: mismo método y precios que la calculadora de calefacción.
+# Si cambias los precios, cámbialos también en la calculadora y ejecuta
+# tools/recalcular_gasto.py para actualizar coste_diario_estimado_eur.
+PRICES = {"luz": 0.20, "saco": 5.67, "lena": 0.26, "bombona": 18.84}
+PRICES_TXT = "septiembre de 2026"
+FUEL = {"pellets": "pellet", "lena-biomasa": "lena", "electricos": "luz", "gas": "butano", "radiadores": "luz"}
+PCI = {"pellet": 4.8, "lena": 3.8, "butano": 12.7}   # kWh por kg
+EFF = {"pellet": 0.85, "lena": 0.70, "butano": 1.0, "luz": 1.0}
+LOAD_MEDIA = 0.6   # potencia media: la estufa trabaja al 60 % de su potencia nominal
+HORAS_DIA = 8      # base del gasto diario de cada ficha
+
+
+def cpk(fuel):
+    """€ por kWh de calor útil."""
+    if fuel == "luz":
+        return PRICES["luz"] / EFF["luz"]
+    if fuel == "pellet":
+        return (PRICES["saco"] / 15) / (PCI["pellet"] * EFF["pellet"])
+    if fuel == "lena":
+        return PRICES["lena"] / (PCI["lena"] * EFF["lena"])
+    if fuel == "butano":
+        return (PRICES["bombona"] / 12.5) / (PCI["butano"] * EFF["butano"])
+    raise ValueError(fuel)
+
+
+def gasto_hora(p, load=LOAD_MEDIA):
+    return (p.get("potencia_kw") or 0) * load * cpk(FUEL[p["category"]])
+
+
+def gasto_diario(p):
+    return round(gasto_hora(p) * HORAS_DIA, 2)
+
 CATEGORIES = {
     "pellets": {
         "slug": "estufas-de-pellets",
@@ -120,7 +177,7 @@ SPEC_FIELDS = [
     ("tipo_combustible", "⛽", "Combustible", lambda v: str(v), False),
     ("superficie_calefactable_m2", "📐", "Superficie", lambda v: f"Hasta {fmt_num(v)} m²", False),
     ("potencia_kw", "⚡", "Potencia", lambda v: f"{fmt_num(v)} kW", False),
-    ("coste_diario_estimado_eur", "💶", "Coste diario estimado (8h)", lambda v: fmt_price(v), False),
+    ("coste_diario_estimado_eur", "💶", "Gasto diario (8 h a potencia media)", lambda v: fmt_price(v), False),
     ("tiempo_calentamiento_min", "⏱️", "Tiempo de calentamiento", lambda v: f"{fmt_num(v)} min", False),
     ("capacidad_deposito_kg", "🪣", "Capacidad del depósito", lambda v: f"{fmt_num(v)} kg", True),
     ("nivel_ruido_db", "🔈", "Nivel de ruido", lambda v: f"{fmt_num(v)} dB", True),
@@ -397,6 +454,7 @@ def page(title, description, canonical, body, extra_head="", scripts="", price_n
         <ul>
           {nav_links(short=True)}
           <li><a href="/comparador.html">Comparador</a></li>
+          <li><a href="{CALC_URL}" target="_blank" rel="noopener">Calculadora</a></li>
           <li><a href="/asistente.html" class="nav-quiz-link">¿Cuál elijo?</a></li>
         </ul>
       </nav>
@@ -432,6 +490,12 @@ def page(title, description, canonical, body, extra_head="", scripts="", price_n
             <li><a href="/comparador.html">Comparador de estufas</a></li>
             <li><a href="{CALC_URL}" target="_blank" rel="noopener">Calculadora de calefacción</a></li>
             <li><a href="/#preguntas">Preguntas frecuentes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Guías de consumo</h4>
+          <ul>
+            {"".join(f'<li><a href="{CALC_URL}{u}" target="_blank" rel="noopener">{e(t)}</a></li>' for u, t in GUIDES_FOOTER)}
           </ul>
         </div>
         <div>
@@ -546,6 +610,105 @@ def product_schema(p):
             "reviewBody": p.get("destacado_editorial"),
         }
     return json_ld({k: v for k, v in schema.items() if v is not None})
+
+
+def fmt_eur(v, d=None):
+    if d is None:
+        d = 2 if v < 10 else 0
+    s = f"{v:,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{s} €"
+
+
+def fmt_dec(v, d=1):
+    return f"{v:,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def gasto_html(p):
+    """Bloque «¿Cuánto gasta?» con el mismo cálculo que la calculadora."""
+    kw = p.get("potencia_kw")
+    if not kw:
+        return ""
+    fuel = FUEL[p["category"]]
+    h_med, h_full = gasto_hora(p), gasto_hora(p, 1)
+    day = gasto_diario(p)
+    month = day * 30
+    heat = kw * LOAD_MEDIA
+    if fuel == "pellet":
+        kgh = heat / (PCI["pellet"] * EFF["pellet"])
+        detail = (f"Quema unos <b>{fmt_dec(kgh)} kg de pellets por hora</b> a potencia media: un saco de 15 kg le dura unas "
+                  f"{fmt_dec(15 / kgh, 0)} horas y, usándola {HORAS_DIA} horas al día, gastarás unos {fmt_dec(kgh * HORAS_DIA * 30 / 15, 0)} sacos al mes.")
+        precio = f"saco de 15 kg a {fmt_eur(PRICES['saco'])}"
+    elif fuel == "lena":
+        kgh = heat / (PCI["lena"] * EFF["lena"])
+        detail = (f"Quema unos <b>{fmt_dec(kgh)} kg de leña seca por hora</b> a potencia media: unos {fmt_dec(kgh * HORAS_DIA * 30, 0)} kg al mes "
+                  f"usándola {HORAS_DIA} horas al día. Con leña húmeda gastará bastante más.")
+        precio = f"leña seca a {fmt_dec(PRICES['lena'], 2)} €/kg"
+    elif fuel == "butano":
+        kgh = heat / PCI["butano"]
+        detail = (f"Una bombona de 12,5 kg le dura unas <b>{fmt_dec(12.5 / kgh, 0)} horas</b> a potencia media "
+                  f"({fmt_dec(12.5 * PCI['butano'] / kw, 0)} horas a tope). Usándola {HORAS_DIA} horas al día, unas "
+                  f"{fmt_dec(HORAS_DIA * 30 * kgh / 12.5)} bombonas al mes.")
+        precio = f"bombona de 12,5 kg a {fmt_eur(PRICES['bombona'])}"
+    else:
+        detail = (f"Consume <b>{fmt_dec(kw, 1)} kWh por hora</b> a tope y unos {fmt_dec(heat, 1)} kWh con el termostato puesto, "
+                  "que la apaga y la enciende para mantener la temperatura.")
+        precio = f"luz a {fmt_dec(PRICES['luz'], 2)} €/kWh"
+    guide, gtitle = GUIDE[p["category"]]
+    return f"""
+      <section class="gasto-box" id="gasto">
+        <h2>¿Cuánto gasta?</h2>
+        <div class="gasto-tiles">
+          <div><b>{fmt_eur(h_med)}</b><small>por hora a potencia media</small></div>
+          <div><b>{fmt_eur(h_full)}</b><small>por hora a tope</small></div>
+          <div><b>{fmt_eur(day)}</b><small>al día ({HORAS_DIA} h)</small></div>
+          <div class="hot"><b>{fmt_eur(month, 0)}</b><small>al mes ({HORAS_DIA} h al día)</small></div>
+        </div>
+        <p>{detail}</p>
+        <p class="section-note">Con precios de {PRICES_TXT} ({precio}). «Potencia media» es el 60 % de sus {fmt_num(kw)} kW, lo normal con el termostato y la casa ya caliente. Es el mismo cálculo que usamos en todas las fichas, para que puedas compararlas.</p>
+        <div class="gasto-links">
+          <a href="{CALC_URL}{guide}" target="_blank" rel="noopener">Guía: {e(gtitle)} →</a>
+          <a href="{CALC_URL}" target="_blank" rel="noopener">Calcula lo que te costará en tu casa →</a>
+        </div>
+      </section>"""
+
+
+def no_para(p):
+    """Para quién NO es este modelo (reglas a partir de los datos de la ficha)."""
+    cat, name = p["category"], (p.get("name", "") + " " + p["id"]).lower()
+    out = []
+    if "exterior" in name:
+        out.append("La quieres para dentro de casa: es un modelo para exterior.")
+    elif "camping" in name:
+        out.append("Buscas la calefacción de una habitación de casa: es un calefactor pequeño pensado para camping.")
+    if cat in ("pellets", "lena-biomasa") and "exterior" not in name:
+        if p.get("tipo_instalacion") == "instalación profesional":
+            out.append("Quieres algo que puedas instalar tú: este modelo necesita instalación profesional.")
+        out.append("Tu casa no tiene salida de humos ni puedes hacerla (en un piso, la comunidad tiene que permitirla).")
+    if cat == "pellets":
+        if "sin electricidad" in name:
+            out.append("Quieres programarla o encenderla a distancia: funciona sin electricidad, sin centralita.")
+        else:
+            out.append("No quieres mantenimiento: hay que limpiar el brasero a menudo y revisarla una vez al año.")
+    if cat == "lena-biomasa" and "exterior" not in name:
+        out.append("No tienes sitio para guardar leña seca o no quieres cargarla a mano.")
+    if cat in ("electricos", "radiadores"):
+        out.append("Quieres calentar toda la casa muchas horas al día: el calor eléctrico cuesta unos 20 céntimos por kWh, más del doble que con pellets.")
+        if (p.get("potencia_kw") or 0) >= 2:
+            out.append("Tienes poca potencia contratada (3,45 kW) y sueles poner a la vez el horno o la lavadora.")
+        if any(w in name for w in ("cuarzo", "halógena", "halogena")):
+            out.append("Buscas un calor uniforme en toda la habitación: calienta sobre todo lo que tiene delante.")
+    if cat == "gas" and "exterior" not in name and "camping" not in name:
+        out.append("La quieres para el dormitorio o el baño: no se recomienda usar butano ahí.")
+        out.append("Tu casa tiene humedad o condensación: suelta vapor de agua al quemar el gas.")
+    m2 = p.get("superficie_calefactable_m2")
+    if m2:
+        out.append(f"Quieres calentar más de {fmt_num(m2)} m² con un solo aparato.")
+    items = out[:3]
+    return (
+        '<div class="ideal-para-box no-para-box"><span class="icon">🚫</span><div><h3>No es para ti si…</h3><ul>'
+        + "".join(f"<li>{e(x)}</li>" for x in items)
+        + "</ul></div></div>"
+    )
 
 
 def build_product(p, all_products):
@@ -691,11 +854,8 @@ def build_product(p, all_products):
       <div class="cta-band">{amazon_cta(p)}</div>
 
       {ideal}
-      <a class="calc-callout" href="{CALC_URL}" target="_blank" rel="noopener">
-        <span class="calc-callout-icon" aria-hidden="true">€</span>
-        <span><b>¿Cuánto te costará al mes en tu casa?</b> Calcúlalo gratis según tus metros, tu provincia y lo que usas ahora.</span>
-        <span class="calc-callout-go">Abrir la calculadora →</span>
-      </a>
+      {no_para(p)}
+      {gasto_html(p)}
       {pros_cons}
       {reviews}
       {description}
@@ -777,7 +937,7 @@ def build_category(cat_key, all_products):
     ]
     if costs:
         stats.append(
-            f"<li>Coste de uso estimado entre <strong>{fmt_price(min(costs))}</strong> y <strong>{fmt_price(max(costs))}</strong> al día (8 h)</li>"
+            f"<li>Coste de uso estimado entre <strong>{fmt_price(min(costs))}</strong> y <strong>{fmt_price(max(costs))}</strong> al día (8 h a potencia media)</li>"
         )
     if surfaces:
         stats.append(
@@ -835,16 +995,17 @@ def build_category(cat_key, all_products):
       <div class="product-grid">{"".join(product_card(p, BADGE_MAP.get(p["id"])) for p in items)}</div>
     </section>
 
-    <a class="calc-callout" href="{CALC_URL}" target="_blank" rel="noopener">
+    <a class="calc-callout" href="{guide_url(cat_key)}" target="_blank" rel="noopener">
       <span class="calc-callout-icon" aria-hidden="true">€</span>
-      <span><b>¿Cuánto gastarás con {e(cat["label"].lower())}?</b> Compara el coste al mes con tu casa, tu provincia y tu calefacción actual.</span>
-      <span class="calc-callout-go">Abrir la calculadora →</span>
+      <span><b>{e(GUIDE[cat_key][1])}</b> Lo que gasta por hora, al día y al mes según su potencia, con precios de {PRICES_TXT}.</span>
+      <span class="calc-callout-go">Ver la guía →</span>
     </a>
 
     <section class="category-guide">
       <h2>Cómo elegir: claves antes de comprar</h2>
       <ul>{"".join(f"<li>{t}</li>" for t in cat["tips"])}</ul>
-      <p>Si dudas entre dos modelos, ponlos lado a lado en el <a href="/comparador.html">comparador</a>.</p>
+      <p>¿No sabes cuántos kW necesitas? Calcúlalo con la <a href="{POWER_GUIDE}" target="_blank" rel="noopener">calculadora de potencia según los m²</a>.{f' Antes de usarla, repasa <a href="{BUTANO_SAFETY}" target="_blank" rel="noopener">qué riesgos tiene una estufa de butano y cómo evitarlos</a>.' if cat_key == "gas" else ""}</p>
+      <p>Si dudas entre dos modelos, ponlos lado a lado en el <a href="/comparador.html">comparador</a>, o mira <a href="{CALC_URL}que-calefaccion-es-mas-barata.html" target="_blank" rel="noopener">qué calefacción sale más barata</a> con los precios de este invierno.</p>
     </section>
   </main>"""
 
