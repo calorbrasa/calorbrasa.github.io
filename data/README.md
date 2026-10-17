@@ -52,7 +52,7 @@ Añadido — Especificaciones técnicas:
 | `tipo_combustible` | `pellet` \| `leña` \| `eléctrico` \| `gas butano-propano` \| `gas natural` | |
 | `superficie_calefactable_m2` | number | |
 | `potencia_kw` | number | |
-| `coste_diario_estimado_eur` | number | Uso estimado de 8h/día. |
+| `coste_diario_estimado_eur` | number | Gasto de 8 h al día a potencia media (60 % de `potencia_kw`), con el mismo método y precios que la calculadora de calefacción. **No se escribe a mano**: se recalcula con `python3 tools/recalcular_gasto.py` (precios en `PRICES` de `tools/build_static.py`). |
 | `tiempo_calentamiento_min` | number | |
 | `capacidad_deposito_kg` | number \| null | Solo pellet/leña. `null` si no aplica. |
 | `nivel_ruido_db` | number \| null | `null` si no aplica (p. ej. leña sin ventilador). |
