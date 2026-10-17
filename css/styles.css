@@ -2176,3 +2176,34 @@ section.container.home-section { padding-top:72px; padding-bottom:72px; }
 .calc-callout > span:nth-child(2) { flex:1; font-size:0.95rem; color:#e8ded6; }
 .calc-callout-go { flex:none; font-weight:800; color:var(--color-secondary); white-space:nowrap; }
 @media (max-width:640px) { .calc-callout { flex-wrap:wrap; } .calc-callout-go { width:100%; } }
+
+/* ---- Ficha: ¿Cuánto gasta? y «No es para ti si…» ---- */
+.no-para-box ul { margin:6px 0 0; padding-left:18px; }
+.no-para-box li { margin:4px 0; color:var(--color-text); }
+.gasto-box { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius); padding:22px 24px; margin-bottom:40px; }
+.gasto-box h2 { margin:0 0 14px; }
+.gasto-tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+.gasto-tiles > div { background:var(--color-secondary-soft); border-radius:12px; padding:14px 10px; text-align:center; }
+.gasto-tiles b { display:block; font-size:1.45rem; letter-spacing:-.3px; }
+.gasto-tiles small { color:var(--color-text-muted); font-size:.82rem; }
+.gasto-tiles .hot { background:var(--color-primary); color:#fff; }
+.gasto-tiles .hot small { color:#ffe0d0; }
+.gasto-box p { margin:0 0 8px; }
+.gasto-links { display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:12px; font-weight:700; }
+.gasto-links a { color:var(--color-primary); }
+@media (max-width:640px) { .gasto-tiles { grid-template-columns:1fr 1fr; } .gasto-box { padding:18px; } }
+
+/* ---- Portada: enlaces a las guías de consumo ---- */
+.home-calc-guides { margin:10px 0 0; font-size:0.86rem; color:var(--color-text-muted); text-align:center; }
+.home-calc-guides a { color:var(--color-primary); font-weight:700; }
+
+/* Menú con 8 enlaces: más compacto en pantallas medianas */
+@media (min-width: 861px) and (max-width: 1040px) {
+  .main-nav ul { gap:2px; }
+  .main-nav a { padding:8px 8px; font-size:0.88rem; }
+  .nav-quiz-link { margin-left:2px; }
+}
+/* Evita que la cabecera de la ficha desborde en pantallas de ~900 px */
+.detail-top > * { min-width: 0; }
+.radar-grid > * { min-width: 0; }
+@media (min-width: 861px) and (max-width: 1040px) { .radar-grid { grid-template-columns: 1fr; } }
