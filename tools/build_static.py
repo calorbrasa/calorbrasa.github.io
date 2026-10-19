@@ -43,6 +43,20 @@ GUIDES_FOOTER = [
     ("es-peligrosa-estufa-butano.html", "¿Es peligrosa una estufa de butano?"),
 ]
 POWER_GUIDE = CALC_URL + "calculadora-potencia-estufa.html"
+
+# Guías de compra «mejor…» (datos en tools/guias.py)
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from guias import GUIAS, METODO as GUIA_METODO, UPDATED as GUIA_UPDATED, UPDATED_ISO as GUIA_UPDATED_ISO  # noqa: E402
+GUIA_BY_CAT = {g["cat"]: g for g in GUIAS}
+PICKED = {}  # id de producto -> [(slug, h1, etiqueta)]
+for _g in GUIAS:
+    for _pk in _g["picks"]:
+        PICKED.setdefault(_pk["id"], []).append((_g["slug"], _g["h1"], _pk["label"]))
+
+
+def guia_url(slug):
+    return f"/guias/{slug}.html"
 BUTANO_SAFETY = CALC_URL + "es-peligrosa-estufa-butano.html"
 
 
@@ -493,6 +507,12 @@ def page(title, description, canonical, body, extra_head="", scripts="", price_n
           </ul>
         </div>
         <div>
+          <h4>Guías de compra</h4>
+          <ul>
+            {"".join(f'<li><a href="{guia_url(g["slug"])}">{e(g["h1"])}</a></li>' for g in GUIAS)}
+          </ul>
+        </div>
+        <div>
           <h4>Guías de consumo</h4>
           <ul>
             {"".join(f'<li><a href="{CALC_URL}{u}" target="_blank" rel="noopener">{e(t)}</a></li>' for u, t in GUIDES_FOOTER)}
@@ -818,6 +838,10 @@ def build_product(p, all_products):
 
     eyebrow = e(cat["label"]) + (f' · {e(p["marca"])}' if p.get("marca") else "")
     destacado = f'<p class="destacado">{e(p["destacado_editorial"])}</p>' if p.get("destacado_editorial") else ""
+    if PICKED.get(p["id"]):
+        destacado += "".join(
+            f'<p class="guide-mention">🏆 Elegida en nuestra guía <a href="{guia_url(slug)}">{e(h1)}</a>: {e(label)}</p>'
+            for slug, h1, label in PICKED[p["id"]])
 
     body = f"""  <main class="container product-detail" id="product-detail" data-product-id="{e(p['id'])}">
     {bc_html}
@@ -1005,6 +1029,7 @@ def build_category(cat_key, all_products):
       <h2>Cómo elegir: claves antes de comprar</h2>
       <ul>{"".join(f"<li>{t}</li>" for t in cat["tips"])}</ul>
       <p>¿No sabes cuántos kW necesitas? Calcúlalo con la <a href="{POWER_GUIDE}" target="_blank" rel="noopener">calculadora de potencia según los m²</a>.{f' Antes de usarla, repasa <a href="{BUTANO_SAFETY}" target="_blank" rel="noopener">qué riesgos tiene una estufa de butano y cómo evitarlos</a>.' if cat_key == "gas" else ""}</p>
+      {f'<p><b>¿Quieres ir al grano?</b> Mira nuestra guía <a href="{guia_url(GUIA_BY_CAT[cat_key]["slug"])}">{e(GUIA_BY_CAT[cat_key]["h1"])}</a>, con los modelos que recomendamos según tu caso.</p>' if cat_key in GUIA_BY_CAT else ""}
       <p>Si dudas entre dos modelos, ponlos lado a lado en el <a href="/comparador.html">comparador</a>, o mira <a href="{CALC_URL}que-calefaccion-es-mas-barata.html" target="_blank" rel="noopener">qué calefacción sale más barata</a> con los precios de este invierno.</p>
     </section>
   </main>"""
@@ -1016,6 +1041,129 @@ def build_category(cat_key, all_products):
     )
     extra_head = "  " + item_list + "\n  " + bc_schema + "\n"
     return page(title, desc, url, body, extra_head, price_notice=any(has_api_price(p) for p in items))
+
+
+# ---------------------------------------------------------------- guías de compra
+
+def build_guide(g, by_id):
+    cat = CATEGORIES[g["cat"]]
+    url = guia_url(g["slug"])
+    picks = []
+    for pk in g["picks"]:
+        if pk["id"] not in by_id:
+            print(f"AVISO: {g['slug']}: el modelo {pk['id']} ya no está en el catálogo")
+            continue
+        picks.append((pk, by_id[pk["id"]]))
+
+    def val(p):
+        r, n = p.get("valoracion_media"), p.get("resenas_cantidad") or 0
+        return f"{fmt_dec(r, 1)} ★ <small>({fmt_dec(n, 0)})</small>" if r and n else "–"
+
+    rows = "".join(
+        f'<tr><td>{e(pk["label"])}</td><td><a href="#pick-{p["id"]}">{e(cb_name(p))}</a></td>'
+        f'<td>{fmt_num(p["potencia_kw"])} kW</td><td>{fmt_num(p["superficie_calefactable_m2"])} m²</td>'
+        f'<td>{fmt_eur(gasto_diario(p))}</td><td>{nota_text(p)}</td><td>{val(p)}</td></tr>'
+        for pk, p in picks)
+
+    cards = []
+    for i, (pk, p) in enumerate(picks, 1):
+        r, n = p.get("valoracion_media"), p.get("resenas_cantidad") or 0
+        specs = [f"⚡ {fmt_num(p['potencia_kw'])} kW", f"📐 Hasta {fmt_num(p['superficie_calefactable_m2'])} m²",
+                 f"💶 {fmt_eur(gasto_hora(p))}/hora · {fmt_eur(gasto_diario(p))}/día (8 h)"]
+        if r and n:
+            specs.append(f"⭐ {fmt_dec(r, 1)} sobre 5 · {fmt_dec(n, 0)} opiniones en Amazon")
+        cards.append(f"""
+    <article class="guide-pick" id="pick-{e(p['id'])}">
+      <a class="guide-pick-img" href="{product_url(p)}" tabindex="-1" aria-hidden="true">{img_html(p)}</a>
+      <div class="guide-pick-body">
+        <span class="guide-pick-label">{i}. {e(pk['label'])}</span>
+        <h2><a href="{product_url(p)}">{e(cb_name(p))}</a></h2>
+        <div class="product-score">{nota_html(p)}{price_html(p)}</div>
+        <p>{e(pk['why'])}</p>
+        <ul class="guide-specs">{"".join(f"<li>{x}</li>" for x in specs)}</ul>
+        <div class="guide-pc">
+          <div><h3>A favor</h3><ul>{"".join(f"<li>✅ {e(x)}</li>" for x in pk['pros'])}</ul></div>
+          <div><h3>En contra</h3><ul>{"".join(f"<li>❌ {e(x)}</li>" for x in pk['contras'])}</ul></div>
+        </div>
+        <div class="card-actions">{amazon_cta(p)}<a class="btn btn-details" href="{product_url(p)}">Ver análisis completo</a></div>
+      </div>
+    </article>""")
+
+    avoid = ""
+    ev = [(by_id[i], t) for i, t in g.get("evitar", []) if i in by_id]
+    if ev:
+        avoid = ('<section class="guide-avoid"><h2>Las que menos nos convencen</h2><ul>'
+                 + "".join(f'<li><a href="{product_url(p)}">{e(cb_name(p))}</a>: {e(t)}</li>' for p, t in ev)
+                 + "</ul></section>")
+
+    first = picks[0][1]
+    gtitle = GUIDE[g["cat"]][1]
+    import re as _re
+    faq = [
+        (g["h1"].replace(" 2026", "").replace("Mejor", "¿Cuál es la mejor") + "?", _re.sub("<[^>]+>", "", g["summary"])),
+        (f"¿Cuánto gasta nuestra primera elección, {cb_name(first)}?",
+         f"Unos {fmt_eur(gasto_hora(first))} por hora a potencia media y {fmt_eur(gasto_diario(first))} al día si la usas 8 horas, con precios de {PRICES_TXT}."),
+    ] + list(g.get("faq_extra", []))
+    faq_html = "".join(f"<details><summary>{e(q)}</summary><p>{a}</p></details>" for q, a in faq)
+
+    bc_html, bc_schema = breadcrumb([("Inicio", "/"), (cat["label"], category_url(g["cat"])), (g["h1"], None)])
+    body = f"""  <main class="container guide-page">
+    {bc_html}
+    <header class="guide-header">
+      <h1>{e(g['h1'])}</h1>
+      <p class="section-subtitle">{e(g['lead'])}</p>
+      <div class="guide-summary"><p>{g['summary']}</p></div>
+      <p class="guide-meta">Actualizada en {GUIA_UPDATED} · <a href="#metodo">Cómo las hemos elegido</a></p>
+    </header>
+
+    <section class="guide-toc">
+      <h2>Nuestras elecciones</h2>
+      <div class="guide-table-wrap"><table class="guide-table">
+        <thead><tr><th>Para</th><th>Modelo</th><th>Potencia</th><th>Calienta</th><th>Gasto/día (8 h)</th><th>Nota</th><th>Valoración</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table></div>
+    </section>
+{"".join(cards)}
+    {avoid}
+
+    <section class="category-guide">
+      <h2>Cómo elegir</h2>
+      <ul>{"".join(f"<li>{t}</li>" for t in g["consejos"])}</ul>
+      <p>¿Quieres verlas todas? Mira las <a href="{category_url(g['cat'])}">{e(cat['label'].lower())}</a> o compara modelos en el <a href="/comparador.html">comparador</a>.</p>
+    </section>
+
+    <a class="calc-callout" href="{guide_url(g['cat'])}" target="_blank" rel="noopener">
+      <span class="calc-callout-icon" aria-hidden="true">€</span>
+      <span><b>{e(gtitle)}</b> Por hora, al día y al mes según su potencia, con la calculadora de consumo.</span>
+      <span class="calc-callout-go">Ver la guía →</span>
+    </a>
+
+    <section class="guide-method" id="metodo">
+      <h2>Cómo las hemos elegido</h2>
+      <p>{e(GUIA_METODO)}</p>
+    </section>
+
+    <section class="guide-faq">
+      <h2>Preguntas frecuentes</h2>
+      {faq_html}
+    </section>
+  </main>"""
+
+    ld = [
+        {"@context": "https://schema.org", "@type": "Article", "headline": g["title"], "description": g["desc"],
+         "inLanguage": "es", "datePublished": GUIA_UPDATED_ISO, "dateModified": GUIA_UPDATED_ISO,
+         "mainEntityOfPage": SITE + url, "author": {"@type": "Organization", "name": "CalorBrasa", "url": SITE},
+         "publisher": {"@type": "Organization", "name": "CalorBrasa", "url": SITE}},
+        {"@context": "https://schema.org", "@type": "ItemList", "name": g["h1"], "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "url": SITE + product_url(p), "name": cb_name(p)} for i, (pk, p) in enumerate(picks)]},
+        {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+            {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": _re.sub("<[^>]+>", "", a)}} for q, a in faq]},
+    ]
+    extra_head = "  " + "\n  ".join(json_ld(o) for o in ld) + "\n  " + bc_schema + "\n"
+    if first.get("image_url"):
+        extra_head += f'  <meta property="og:image" content="{e(first["image_url"])}">\n'
+    shows_price = any(has_api_price(p) for _, p in picks)
+    return page(g["title"], g["desc"], url, body, extra_head, price_notice=shows_price)
 
 
 # ---------------------------------------------------------------- sitemap
@@ -1030,6 +1178,7 @@ def build_sitemap(products):
         ("/comparador.html", "monthly", "0.6"),
         ("/asistente.html", "monthly", "0.7"),
     ]
+    urls += [(guia_url(g["slug"]), "weekly", "0.9") for g in GUIAS]
     urls += [(product_url(p), "monthly", "0.7") for p in products]
     urls += [
         ("/aviso-afiliados.html", "yearly", "0.2"),
@@ -1076,10 +1225,17 @@ def main():
         with open(os.path.join(cat_dir, f"{CATEGORIES[c]['slug']}.html"), "w", encoding="utf-8") as f:
             f.write(build_category(c, products))
 
+    guia_dir = os.path.join(ROOT, "guias")
+    os.makedirs(guia_dir, exist_ok=True)
+    by_id = {p["id"]: p for p in products}
+    for g in GUIAS:
+        with open(os.path.join(guia_dir, f"{g['slug']}.html"), "w", encoding="utf-8") as f:
+            f.write(build_guide(g, by_id))
+
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(build_sitemap(products))
 
-    print(f"OK: {len(products)} fichas, {len(CATEGORIES)} categorías, sitemap actualizado.")
+    print(f"OK: {len(products)} fichas, {len(CATEGORIES)} categorías, {len(GUIAS)} guías de compra, sitemap actualizado.")
 
 
 if __name__ == "__main__":
